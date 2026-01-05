@@ -11,7 +11,9 @@ import DashboardPage from "@/pages/DashboardPage";
 import ProductsPage from "@/pages/ProductsPage";
 import ProductEditPage from "@/pages/ProductEditPage";
 import CategoriesPage from "@/pages/CategoriesPage";
+import CategoryEditPage from "@/pages/CategoryEditPage";
 import BrandsPage from "@/pages/BrandsPage";
+import BrandEditPage from "@/pages/BrandEditPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +39,9 @@ const App = () => (
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/:id" element={<ProductEditPage />} />
               <Route path="categories" element={<CategoriesPage />} />
+              <Route path="categories/:id" element={<CategoryEditPage />} />
               <Route path="brands" element={<BrandsPage />} />
+              <Route path="brands/:id" element={<BrandEditPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
