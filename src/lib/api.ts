@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetail, CategoryDetailResponse, CreateCategoryResponse } from '@/types';
 
 const API_BASE = 'http://localhost:3050/api';
 
@@ -87,7 +87,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || 'Request failed');
+      throw new Error(error.error || error.message || 'Request failed');
     }
 
     return response.json();
@@ -156,8 +156,87 @@ class ApiClient {
     return this.request<BrandsResponse>('/brands/brief', {}, false);
   }
 
+  async getBrand(id: number): Promise<BrandDetail> {
+    return this.request<BrandDetail>(`/brands/${id}`, {}, false);
+  }
+
+  async createBrand(data: {
+    name: string;
+    description?: string;
+    website?: string;
+    is_active?: boolean;
+    full_description?: string;
+    country?: string;
+    founded?: string;
+    philosophy?: string;
+    highlights?: string[];
+  }): Promise<BrandDetail> {
+    return this.request<BrandDetail>('/brands/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBrand(id: number, data: Partial<{
+    name: string;
+    description: string;
+    website: string;
+    is_active: boolean;
+    full_description: string;
+    country: string;
+    founded: string;
+    philosophy: string;
+    highlights: string[];
+  }>): Promise<BrandDetail> {
+    return this.request<BrandDetail>(`/brands/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBrand(id: number): Promise<void> {
+    return this.request<void>(`/brands/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getCategories(): Promise<CategoriesResponse> {
     return this.request<CategoriesResponse>('/categories/all', {}, false);
+  }
+
+  async getCategory(id: number): Promise<CategoryDetailResponse> {
+    return this.request<CategoryDetailResponse>(`/categories/${id}`, {}, false);
+  }
+
+  async createCategory(data: {
+    name: string;
+    parent_id?: number;
+    description?: string;
+    is_active?: boolean;
+  }): Promise<CreateCategoryResponse> {
+    return this.request<CreateCategoryResponse>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCategory(id: number, data: Partial<{
+    name: string;
+    parent_id: number | null;
+    description: string;
+    is_active: boolean;
+    display_order: number;
+  }>): Promise<CategoryDetailResponse> {
+    return this.request<CategoryDetailResponse>(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    return this.request<void>(`/categories/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

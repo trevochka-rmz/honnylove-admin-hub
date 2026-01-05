@@ -84,10 +84,59 @@ export interface Brand {
   logo: string;
 }
 
+export interface BrandDetail {
+  id: number;
+  slug: string;
+  name: string;
+  logo: string;
+  description: string | null;
+  fullDescription: string | null;
+  country: string | null;
+  founded: string | null;
+  philosophy: string | null;
+  highlights: string[];
+  productsCount: string;
+  website?: string;
+  is_active?: boolean;
+}
+
 export interface BrandsResponse {
   success: boolean;
   count: number;
   brands: Brand[];
+}
+
+export interface CategoryDetail {
+  id: number;
+  name: string;
+  slug: string;
+  image_url: string;
+  display_order: number;
+  parent_id: number | null;
+  level: number;
+  description: string | null;
+  is_active: boolean;
+  product_count: number;
+  children: {
+    id: number;
+    name: string;
+    slug: string;
+    image_url: string;
+    display_order: number;
+    level: number;
+    product_count: number;
+  }[];
+}
+
+export interface CategoryDetailResponse {
+  success: boolean;
+  data: CategoryDetail;
+}
+
+export interface CreateCategoryResponse {
+  success: boolean;
+  message: string;
+  data: CategoryDetail;
 }
 
 export interface Category {
