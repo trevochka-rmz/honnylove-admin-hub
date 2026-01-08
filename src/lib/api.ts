@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetail, CategoryDetailResponse, CreateCategoryResponse } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetail, CategoryDetailResponse, CreateCategoryResponse, User } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -145,11 +145,16 @@ class ApiClient {
     brand_id: number;
     category_id: number;
     product_type: string;
+    stockQuantity?: number;
   }): Promise<Product> {
     return this.request<Product>('/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async getProfile(): Promise<User> {
+    return this.request<User>('/users/profile');
   }
 
   async getBrands(): Promise<BrandsResponse> {
