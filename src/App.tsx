@@ -14,6 +14,7 @@ import CategoriesPage from "@/pages/CategoriesPage";
 import CategoryEditPage from "@/pages/CategoryEditPage";
 import BrandsPage from "@/pages/BrandsPage";
 import BrandEditPage from "@/pages/BrandEditPage";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="categories/:id" element={<CategoryEditPage />} />
               <Route path="brands" element={<BrandsPage />} />
               <Route path="brands/:id" element={<BrandEditPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

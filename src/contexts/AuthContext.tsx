@@ -6,8 +6,10 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +18,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshProfile = async () => {
+    try {
+      const profile = await api.getProfile();
+      setUser(profile);
+      localStorage.setItem('user', JSON.stringify(profile));
+    } catch {
+      // Token might be invalid
+    }
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('accessToken');
@@ -23,6 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
+        // Refresh profile to get latest role
+        refreshProfile();
       } catch {
         api.clearTokens();
       }
@@ -40,14 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const isAdmin = user?.role === 'admin';
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
         isLoading,
+        isAdmin,
         login,
         logout,
+        refreshProfile,
       }}
     >
       {children}

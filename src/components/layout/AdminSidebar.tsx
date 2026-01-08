@@ -9,10 +9,12 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 
 const navItems = [
@@ -23,7 +25,7 @@ const navItems = [
 ];
 
 export function AdminSidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -58,8 +60,8 @@ export function AdminSidebar() {
 
       <Separator className="bg-sidebar-border" />
 
-      {/* User Profile */}
-      <div className={cn('p-4', collapsed && 'flex justify-center')}>
+      {/* User Profile - Clickable */}
+      <NavLink to="/profile" className={cn('p-4 hover:bg-sidebar-accent transition-colors', collapsed && 'flex justify-center')}>
         <div className={cn('flex items-center gap-3', collapsed && 'flex-col')}>
           <Avatar className="h-10 w-10 border-2 border-sidebar-primary">
             <AvatarFallback className="bg-sidebar-accent text-sidebar-foreground text-sm font-medium">
@@ -71,11 +73,16 @@ export function AdminSidebar() {
               <p className="font-medium text-sm truncate">
                 {user.first_name} {user.last_name}
               </p>
-              <p className="text-xs text-sidebar-muted truncate">{user.email}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-sidebar-muted truncate">{user.email}</p>
+              </div>
+              <Badge variant="outline" className="mt-1 text-[10px] border-sidebar-primary text-sidebar-primary">
+                {isAdmin ? 'Админ' : 'Менеджер'}
+              </Badge>
             </div>
           )}
         </div>
-      </div>
+      </NavLink>
 
       <Separator className="bg-sidebar-border" />
 

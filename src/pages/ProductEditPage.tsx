@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product, Brand, Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,97 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Loader2, Package } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface CategoryNode {
+  id: number;
+  name: string;
+  level: number;
+  children?: CategoryNode[];
+}
+
+function CategorySelector({ 
+  categories, 
+  value, 
+  onChange,
+  disabled 
+}: { 
+  categories: Category[]; 
+  value: string; 
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [openCategories, setOpenCategories] = useState<Set<number>>(new Set());
+
+  const toggleCategory = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newOpen = new Set(openCategories);
+    if (newOpen.has(id)) {
+      newOpen.delete(id);
+    } else {
+      newOpen.add(id);
+    }
+    setOpenCategories(newOpen);
+  };
+
+  const renderCategory = (cat: Category, level = 0) => {
+    const hasChildren = cat.children && cat.children.length > 0;
+    const isOpen = openCategories.has(cat.id);
+    const isSelected = value === cat.id.toString();
+
+    return (
+      <div key={cat.id}>
+        <div
+          className={cn(
+            'flex items-center gap-2 py-1.5 px-2 rounded cursor-pointer hover:bg-muted/50',
+            isSelected && 'bg-primary/10 text-primary',
+            disabled && 'opacity-50 pointer-events-none'
+          )}
+          style={{ paddingLeft: `${level * 16 + 8}px` }}
+          onClick={() => onChange(cat.id.toString())}
+        >
+          {hasChildren && (
+            <button
+              onClick={(e) => toggleCategory(cat.id, e)}
+              className="p-0.5 hover:bg-muted rounded"
+            >
+              {isOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+            </button>
+          )}
+          {!hasChildren && <span className="w-4" />}
+          <span className="text-sm">{cat.name}</span>
+        </div>
+        {hasChildren && isOpen && (
+          <div>
+            {cat.children!.map((child) => renderCategory(child as Category, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="border rounded-md max-h-64 overflow-y-auto">
+      {categories.map((cat) => renderCategory(cat))}
+    </div>
+  );
+}
 
 export default function ProductEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const isNew = id === 'new';
 
   const [isLoading, setIsLoading] = useState(!isNew);
@@ -51,6 +138,7 @@ export default function ProductEditPage() {
     weight_grams: '',
     meta_title: '',
     meta_description: '',
+    stockQuantity: '',
   });
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -92,6 +180,7 @@ export default function ProductEditPage() {
         weight_grams: data.weight_grams?.toString() || '',
         meta_title: data.meta_title || '',
         meta_description: data.meta_description || '',
+        stockQuantity: data.stockQuantity?.toString() || '',
       });
     } catch (error) {
       toast({
@@ -109,23 +198,30 @@ export default function ProductEditPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const flattenCategories = (
-    cats: Category[],
-    level = 0
-  ): { id: number; name: string; level: number }[] => {
-    let result: { id: number; name: string; level: number }[] = [];
-    for (const cat of cats) {
-      result.push({ id: cat.id, name: cat.name, level });
-      if (cat.children && cat.children.length > 0) {
-        result = result.concat(flattenCategories(cat.children, level + 1));
+  const getCategoryName = (catId: string) => {
+    const findCat = (cats: Category[]): string | null => {
+      for (const cat of cats) {
+        if (cat.id.toString() === catId) return cat.name;
+        if (cat.children) {
+          const found = findCat(cat.children);
+          if (found) return found;
+        }
       }
-    }
-    return result;
+      return null;
+    };
+    return findCat(categories) || 'Выберите категорию';
   };
 
-  const flatCategories = flattenCategories(categories);
-
   const handleSave = async () => {
+    if (!isAdmin) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для редактирования',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.name) {
       toast({
         title: 'Ошибка',
@@ -145,6 +241,7 @@ export default function ProductEditPage() {
           brand_id: Number(formData.brand_id) || 1,
           category_id: Number(formData.category_id) || 1,
           product_type: formData.product_type,
+          stockQuantity: formData.stockQuantity ? Number(formData.stockQuantity) : undefined,
         });
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
@@ -154,22 +251,41 @@ export default function ProductEditPage() {
         if (formData.description !== product?.description) updates.description = formData.description;
         if (formData.purchasePrice !== product?.purchasePrice) updates.purchase_price = Number(formData.purchasePrice);
         if (formData.price !== product?.price) updates.retail_price = Number(formData.price);
-        if (formData.discountPrice !== product?.discountPrice) updates.discount_price = formData.discountPrice ? Number(formData.discountPrice) : null;
+        if (formData.discountPrice !== (product?.discountPrice || '')) {
+          updates.discount_price = formData.discountPrice ? Number(formData.discountPrice) : undefined;
+        }
         if (formData.brand_id !== product?.brand_id?.toString()) updates.brand_id = Number(formData.brand_id);
         if (formData.category_id !== product?.category_id?.toString()) updates.category_id = Number(formData.category_id);
-        if (formData.sku !== product?.sku) updates.sku = formData.sku;
         if (formData.product_type !== product?.product_type) updates.product_type = formData.product_type;
         if (formData.target_audience !== product?.target_audience) updates.target_audience = formData.target_audience;
-        if (formData.skin_type !== product?.skin_type) updates.skin_type = formData.skin_type;
-        if (formData.ingredients !== product?.ingredients) updates.ingredients = formData.ingredients;
-        if (formData.usage !== product?.usage) updates.usage = formData.usage;
-        if (formData.inStock !== product?.inStock) updates.in_stock = formData.inStock;
+        if (formData.skin_type !== (product?.skin_type || '')) updates.skin_type = formData.skin_type || undefined;
+        if (formData.weight_grams !== (product?.weight_grams?.toString() || '')) {
+          updates.weight_grams = formData.weight_grams ? Number(formData.weight_grams) : undefined;
+        }
         if (formData.isNew !== product?.isNew) updates.is_new = formData.isNew;
         if (formData.isBestseller !== product?.isBestseller) updates.is_bestseller = formData.isBestseller;
         if (formData.isFeatured !== product?.isFeatured) updates.is_featured = formData.isFeatured;
-        if (formData.weight_grams !== product?.weight_grams?.toString()) updates.weight_grams = formData.weight_grams ? Number(formData.weight_grams) : null;
-        if (formData.meta_title !== product?.meta_title) updates.meta_title = formData.meta_title;
-        if (formData.meta_description !== product?.meta_description) updates.meta_description = formData.meta_description;
+        if (formData.stockQuantity !== (product?.stockQuantity?.toString() || '')) {
+          updates.stockQuantity = formData.stockQuantity ? Number(formData.stockQuantity) : 0;
+        }
+        if (formData.meta_title !== (product?.meta_title || '')) {
+          updates.meta_title = formData.meta_title || undefined;
+        }
+        if (formData.meta_description !== (product?.meta_description || '')) {
+          updates.meta_description = formData.meta_description || undefined;
+        }
+
+        // Handle attributes separately
+        const attributes: Record<string, any> = {};
+        if (formData.ingredients !== (product?.ingredients || '')) {
+          attributes.ingredients = formData.ingredients;
+        }
+        if (formData.usage !== (product?.usage || '')) {
+          attributes.usage = formData.usage;
+        }
+        if (Object.keys(attributes).length > 0) {
+          updates.attributes = attributes;
+        }
 
         if (Object.keys(updates).length > 0) {
           await api.updateProduct(id, updates);
@@ -196,6 +312,8 @@ export default function ProductEditPage() {
     );
   }
 
+  const canEdit = isAdmin;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -205,20 +323,22 @@ export default function ProductEditPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground">
-            {isNew ? 'Новый товар' : 'Редактирование товара'}
+            {isNew ? 'Новый товар' : canEdit ? 'Редактирование товара' : 'Просмотр товара'}
           </h1>
           {product && (
             <p className="text-muted-foreground">ID: {product.id} • SKU: {product.sku}</p>
           )}
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Сохранить
-        </Button>
+        {canEdit && (
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Сохранить
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -236,6 +356,7 @@ export default function ProductEditPage() {
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
                   placeholder="Название товара"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -247,6 +368,7 @@ export default function ProductEditPage() {
                   onChange={(e) => handleChange('description', e.target.value)}
                   placeholder="Описание товара"
                   rows={4}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -256,6 +378,7 @@ export default function ProductEditPage() {
                   <Select
                     value={formData.brand_id}
                     onValueChange={(value) => handleChange('brand_id', value)}
+                    disabled={!canEdit}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите бренд" />
@@ -271,53 +394,40 @@ export default function ProductEditPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Категория</Label>
-                  <Select
+                  <Label>Категория</Label>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Выбрано: {getCategoryName(formData.category_id)}
+                  </div>
+                  <CategorySelector
+                    categories={categories}
                     value={formData.category_id}
-                    onValueChange={(value) => handleChange('category_id', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите категорию" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {flatCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {'—'.repeat(cat.level)} {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => handleChange('category_id', value)}
+                    disabled={!canEdit}
+                  />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sku">SKU</Label>
-                <Input
-                  id="sku"
-                  value={formData.sku}
-                  onChange={(e) => handleChange('sku', e.target.value)}
-                  placeholder="Артикул"
-                />
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Цены</CardTitle>
+              <CardTitle>Цены и наличие</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="purchasePrice">Закупочная цена</Label>
-                  <Input
-                    id="purchasePrice"
-                    type="number"
-                    value={formData.purchasePrice}
-                    onChange={(e) => handleChange('purchasePrice', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="purchasePrice">Закупочная цена</Label>
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      value={formData.purchasePrice}
+                      onChange={(e) => handleChange('purchasePrice', e.target.value)}
+                      placeholder="0"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="price">Розничная цена</Label>
                   <Input
@@ -326,6 +436,7 @@ export default function ProductEditPage() {
                     value={formData.price}
                     onChange={(e) => handleChange('price', e.target.value)}
                     placeholder="0"
+                    disabled={!canEdit}
                   />
                 </div>
                 <div className="space-y-2">
@@ -336,6 +447,18 @@ export default function ProductEditPage() {
                     value={formData.discountPrice}
                     onChange={(e) => handleChange('discountPrice', e.target.value)}
                     placeholder="Опционально"
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stockQuantity">Количество</Label>
+                  <Input
+                    id="stockQuantity"
+                    type="number"
+                    value={formData.stockQuantity}
+                    onChange={(e) => handleChange('stockQuantity', e.target.value)}
+                    placeholder="0"
+                    disabled={!canEdit}
                   />
                 </div>
               </div>
@@ -353,6 +476,7 @@ export default function ProductEditPage() {
                   <Select
                     value={formData.product_type}
                     onValueChange={(value) => handleChange('product_type', value)}
+                    disabled={!canEdit}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -369,6 +493,7 @@ export default function ProductEditPage() {
                   <Select
                     value={formData.target_audience}
                     onValueChange={(value) => handleChange('target_audience', value)}
+                    disabled={!canEdit}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -387,6 +512,7 @@ export default function ProductEditPage() {
                     value={formData.skin_type}
                     onChange={(e) => handleChange('skin_type', e.target.value)}
                     placeholder="Для любого типа"
+                    disabled={!canEdit}
                   />
                 </div>
               </div>
@@ -399,6 +525,7 @@ export default function ProductEditPage() {
                   onChange={(e) => handleChange('ingredients', e.target.value)}
                   placeholder="Ингредиенты"
                   rows={3}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -410,6 +537,7 @@ export default function ProductEditPage() {
                   onChange={(e) => handleChange('usage', e.target.value)}
                   placeholder="Инструкция по применению"
                   rows={3}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -421,6 +549,7 @@ export default function ProductEditPage() {
                   value={formData.weight_grams}
                   onChange={(e) => handleChange('weight_grams', e.target.value)}
                   placeholder="0"
+                  disabled={!canEdit}
                 />
               </div>
             </CardContent>
@@ -438,6 +567,7 @@ export default function ProductEditPage() {
                   value={formData.meta_title}
                   onChange={(e) => handleChange('meta_title', e.target.value)}
                   placeholder="SEO заголовок"
+                  disabled={!canEdit}
                 />
               </div>
               <div className="space-y-2">
@@ -448,6 +578,7 @@ export default function ProductEditPage() {
                   onChange={(e) => handleChange('meta_description', e.target.value)}
                   placeholder="SEO описание"
                   rows={2}
+                  disabled={!canEdit}
                 />
               </div>
             </CardContent>
@@ -465,7 +596,7 @@ export default function ProductEditPage() {
               <CardContent>
                 <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                   <img
-                    src={product.image}
+                    src={product.image.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${product.image}` : product.image}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -486,6 +617,7 @@ export default function ProductEditPage() {
                   id="inStock"
                   checked={formData.inStock}
                   onCheckedChange={(checked) => handleChange('inStock', checked)}
+                  disabled={!canEdit}
                 />
               </div>
               <Separator />
@@ -495,6 +627,7 @@ export default function ProductEditPage() {
                   id="isNew"
                   checked={formData.isNew}
                   onCheckedChange={(checked) => handleChange('isNew', checked)}
+                  disabled={!canEdit}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -503,6 +636,7 @@ export default function ProductEditPage() {
                   id="isBestseller"
                   checked={formData.isBestseller}
                   onCheckedChange={(checked) => handleChange('isBestseller', checked)}
+                  disabled={!canEdit}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -511,6 +645,7 @@ export default function ProductEditPage() {
                   id="isFeatured"
                   checked={formData.isFeatured}
                   onCheckedChange={(checked) => handleChange('isFeatured', checked)}
+                  disabled={!canEdit}
                 />
               </div>
             </CardContent>

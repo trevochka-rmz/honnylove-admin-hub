@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product, Brand, Category, ProductFilters } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
-  Pencil,
   Search,
   Filter,
   ChevronLeft,
@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 export default function ProductsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -114,7 +115,6 @@ export default function ProductsPage() {
     ? products.filter(
         (p) =>
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.brand?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : products;
@@ -151,10 +151,12 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-foreground">Товары</h1>
           <p className="text-muted-foreground">Всего {total} товаров</p>
         </div>
-        <Button onClick={() => navigate('/products/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить товар
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => navigate('/products/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить товар
+          </Button>
+        )}
       </div>
 
       {/* Search & Filters */}
@@ -165,7 +167,7 @@ export default function ProductsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Поиск по названию, SKU или бренду..."
+                placeholder="Поиск по названию или бренду..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -341,23 +343,26 @@ export default function ProductsPage() {
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-16">Фото</TableHead>
                     <TableHead className="min-w-[200px]">Название</TableHead>
-                    <TableHead>SKU</TableHead>
                     <TableHead>Бренд</TableHead>
                     <TableHead>Категория</TableHead>
-                    <TableHead className="text-right">Закупка</TableHead>
+                    {isAdmin && <TableHead className="text-right">Закупка</TableHead>}
                     <TableHead className="text-right">Цена</TableHead>
                     <TableHead className="text-center">Статус</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="text-center">Кол-во</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => (
-                    <TableRow key={product.id} className="group hover:bg-muted/30">
+                    <TableRow 
+                      key={product.id} 
+                      className="group hover:bg-muted/30 cursor-pointer"
+                      onClick={() => navigate(`/products/${product.id}`)}
+                    >
                       <TableCell>
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
                           {product.image ? (
                             <img
-                              src={product.image}
+                              src={product.image.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${product.image}` : product.image}
                               alt={product.name}
                               className="w-full h-full object-cover"
                             />
@@ -376,14 +381,15 @@ export default function ProductsPage() {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{product.sku}</TableCell>
                       <TableCell>{product.brand}</TableCell>
                       <TableCell>
                         <span className="text-sm">{product.category_name}</span>
                       </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {Number(product.purchasePrice).toLocaleString('ru-RU')} ₽
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right font-medium">
+                          {Number(product.purchasePrice).toLocaleString('ru-RU')} ₽
+                        </TableCell>
+                      )}
                       <TableCell className="text-right">
                         <div>
                           <span className="font-semibold text-foreground">
@@ -415,15 +421,15 @@ export default function ProductsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => navigate(`/products/${product.id}`)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-center">
+                        <span className={cn(
+                          'font-medium',
+                          (product.stockQuantity ?? 0) === 0 && 'text-destructive',
+                          (product.stockQuantity ?? 0) > 0 && (product.stockQuantity ?? 0) <= 5 && 'text-warning',
+                          (product.stockQuantity ?? 0) > 5 && 'text-success'
+                        )}>
+                          {product.stockQuantity ?? 0}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
