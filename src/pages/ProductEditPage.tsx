@@ -131,11 +131,11 @@ export default function ProductEditPage() {
     skin_type: '',
     ingredients: '',
     usage: '',
-    inStock: true,
+    variant_name: '',
+    variant_value: '',
     isNew: false,
     isBestseller: false,
     isFeatured: false,
-    weight_grams: '',
     meta_title: '',
     meta_description: '',
     stockQuantity: '',
@@ -173,11 +173,11 @@ export default function ProductEditPage() {
         skin_type: data.skin_type || '',
         ingredients: data.ingredients || '',
         usage: data.usage || '',
-        inStock: data.inStock ?? true,
+        variant_name: data.variants?.[0]?.name || '',
+        variant_value: data.variants?.[0]?.value || '',
         isNew: data.isNew ?? false,
         isBestseller: data.isBestseller ?? false,
         isFeatured: data.isFeatured ?? false,
-        weight_grams: data.weight_grams?.toString() || '',
         meta_title: data.meta_title || '',
         meta_description: data.meta_description || '',
         stockQuantity: data.stockQuantity?.toString() || '',
@@ -234,6 +234,18 @@ export default function ProductEditPage() {
     setIsSaving(true);
     try {
       if (isNew) {
+        const createAttributes: Record<string, any> = {};
+        if (formData.ingredients) createAttributes.ingredients = formData.ingredients;
+        if (formData.usage) createAttributes.usage = formData.usage;
+        if (formData.variant_name || formData.variant_value) {
+          createAttributes.variants = [
+            {
+              name: formData.variant_name || 'Объём',
+              value: formData.variant_value,
+            },
+          ];
+        }
+
         await api.createProduct({
           name: formData.name,
           purchase_price: Number(formData.purchasePrice) || 0,
@@ -241,7 +253,8 @@ export default function ProductEditPage() {
           brand_id: Number(formData.brand_id) || 1,
           category_id: Number(formData.category_id) || 1,
           product_type: formData.product_type,
-          stockQuantity: formData.stockQuantity ? Number(formData.stockQuantity) : undefined,
+          stockQuantity: formData.stockQuantity === '' ? undefined : Number(formData.stockQuantity),
+          attributes: Object.keys(createAttributes).length ? createAttributes : undefined,
         });
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
@@ -259,9 +272,6 @@ export default function ProductEditPage() {
         if (formData.product_type !== product?.product_type) updates.product_type = formData.product_type;
         if (formData.target_audience !== product?.target_audience) updates.target_audience = formData.target_audience;
         if (formData.skin_type !== (product?.skin_type || '')) updates.skin_type = formData.skin_type || undefined;
-        if (formData.weight_grams !== (product?.weight_grams?.toString() || '')) {
-          updates.weight_grams = formData.weight_grams ? Number(formData.weight_grams) : undefined;
-        }
         if (formData.isNew !== product?.isNew) updates.is_new = formData.isNew;
         if (formData.isBestseller !== product?.isBestseller) updates.is_bestseller = formData.isBestseller;
         if (formData.isFeatured !== product?.isFeatured) updates.is_featured = formData.isFeatured;
@@ -283,6 +293,27 @@ export default function ProductEditPage() {
         if (formData.usage !== (product?.usage || '')) {
           attributes.usage = formData.usage;
         }
+
+        const currentVariant = product?.variants?.[0];
+        const currentVariantName = currentVariant?.name || '';
+        const currentVariantValue = currentVariant?.value || '';
+
+        if (
+          formData.variant_name !== currentVariantName ||
+          formData.variant_value !== currentVariantValue
+        ) {
+          if (formData.variant_name || formData.variant_value) {
+            attributes.variants = [
+              {
+                name: formData.variant_name || currentVariantName || 'Объём',
+                value: formData.variant_value || currentVariantValue,
+              },
+            ];
+          } else {
+            attributes.variants = [];
+          }
+        }
+
         if (Object.keys(attributes).length > 0) {
           updates.attributes = attributes;
         }
@@ -542,15 +573,36 @@ export default function ProductEditPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="weight">Вес (грамм)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={formData.weight_grams}
-                  onChange={(e) => handleChange('weight_grams', e.target.value)}
-                  placeholder="0"
-                  disabled={!canEdit}
-                />
+                <Label>Объём / вес</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="variant_name" className="text-xs text-muted-foreground">
+                      Название
+                    </Label>
+                    <Input
+                      id="variant_name"
+                      value={formData.variant_name}
+                      onChange={(e) => handleChange('variant_name', e.target.value)}
+                      placeholder="Объём или Вес"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="variant_value" className="text-xs text-muted-foreground">
+                      Значение
+                    </Label>
+                    <Input
+                      id="variant_value"
+                      value={formData.variant_value}
+                      onChange={(e) => handleChange('variant_value', e.target.value)}
+                      placeholder="Например: 50мл"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Сохраняется как attributes.variants[0].name/value
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -612,13 +664,10 @@ export default function ProductEditPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="inStock">В наличии</Label>
-                <Switch
-                  id="inStock"
-                  checked={formData.inStock}
-                  onCheckedChange={(checked) => handleChange('inStock', checked)}
-                  disabled={!canEdit}
-                />
+                <span className="text-sm font-medium text-foreground">Наличие</span>
+                <span className="text-sm text-muted-foreground">
+                  {(Number(formData.stockQuantity) || 0) > 0 ? 'В наличии' : 'Нет'}
+                </span>
               </div>
               <Separator />
               <div className="flex items-center justify-between">

@@ -1,14 +1,69 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetail, CategoryDetailResponse, CreateCategoryResponse, User } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 class ApiClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private refreshInFlight: Promise<boolean> | null = null;
+  private autoRefreshIntervalId: number | null = null;
 
   constructor() {
     this.accessToken = localStorage.getItem('accessToken');
     this.refreshToken = localStorage.getItem('refreshToken');
+
+    // Keep sessions alive (accessToken expires ~10-15 min)
+    if (this.accessToken && this.refreshToken) {
+      this.startAutoRefresh();
+    }
+  }
+
+  private isJwtExpiringSoon(token: string | null, withinSeconds = 120): boolean {
+    if (!token) return true;
+    try {
+      const [, payloadBase64] = token.split('.');
+      if (!payloadBase64) return true;
+
+      const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+      const payloadJson = atob(normalized);
+      const payload = JSON.parse(payloadJson) as { exp?: number };
+      if (!payload.exp) return true;
+
+      const expiresAtMs = payload.exp * 1000;
+      return Date.now() >= expiresAtMs - withinSeconds * 1000;
+    } catch {
+      return true;
+    }
+  }
+
+  startAutoRefresh(opts: { checkIntervalMs?: number; refreshWithinSeconds?: number } = {}) {
+    const checkIntervalMs = opts.checkIntervalMs ?? 60_000;
+    const refreshWithinSeconds = opts.refreshWithinSeconds ?? 120;
+
+    if (this.autoRefreshIntervalId) {
+      window.clearInterval(this.autoRefreshIntervalId);
+      this.autoRefreshIntervalId = null;
+    }
+
+    if (!this.refreshToken) return;
+
+    this.autoRefreshIntervalId = window.setInterval(async () => {
+      if (!this.refreshToken) return;
+      if (!this.isJwtExpiringSoon(this.accessToken, refreshWithinSeconds)) return;
+
+      const ok = await this.refreshAccessToken();
+      if (!ok) {
+        this.clearTokens();
+        window.location.href = '/login';
+      }
+    }, checkIntervalMs);
+  }
+
+  stopAutoRefresh() {
+    if (this.autoRefreshIntervalId) {
+      window.clearInterval(this.autoRefreshIntervalId);
+      this.autoRefreshIntervalId = null;
+    }
   }
 
   setTokens(accessToken: string, refreshToken: string) {
@@ -16,9 +71,11 @@ class ApiClient {
     this.refreshToken = refreshToken;
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    this.startAutoRefresh();
   }
 
   clearTokens() {
+    this.stopAutoRefresh();
     this.accessToken = null;
     this.refreshToken = null;
     localStorage.removeItem('accessToken');
@@ -33,22 +90,32 @@ class ApiClient {
   private async refreshAccessToken(): Promise<boolean> {
     if (!this.refreshToken) return false;
 
-    try {
-      const response = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
+    if (this.refreshInFlight) return this.refreshInFlight;
 
-      if (!response.ok) return false;
+    this.refreshInFlight = (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: this.refreshToken }),
+        });
 
-      const data = await response.json();
-      this.accessToken = data.accessToken;
-      localStorage.setItem('accessToken', data.accessToken);
-      return true;
-    } catch {
-      return false;
-    }
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        if (!data?.accessToken) return false;
+
+        this.accessToken = data.accessToken;
+        localStorage.setItem('accessToken', data.accessToken);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.refreshInFlight = null;
+      }
+    })();
+
+    return this.refreshInFlight;
   }
 
   private async request<T>(
@@ -70,7 +137,14 @@ class ApiClient {
       headers,
     });
 
-    if (response.status === 401 && requiresAuth) {
+    const shouldAttemptRefresh =
+      requiresAuth &&
+      !!this.refreshToken &&
+      !!this.accessToken &&
+      (response.status === 401 ||
+        (response.status === 403 && this.isJwtExpiringSoon(this.accessToken, 0)));
+
+    if (shouldAttemptRefresh) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
         headers['Authorization'] = `Bearer ${this.accessToken}`;
@@ -146,6 +220,11 @@ class ApiClient {
     category_id: number;
     product_type: string;
     stockQuantity?: number;
+    attributes?: {
+      ingredients?: string;
+      usage?: string;
+      variants?: { name: string; value: string }[];
+    };
   }): Promise<Product> {
     return this.request<Product>('/products', {
       method: 'POST',
@@ -243,6 +322,41 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  async getBlogs(params: { limit?: number; page?: number; search?: string } = {}): Promise<BlogsResponse> {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.append('limit', params.limit.toString());
+    if (params.page) qs.append('page', params.page.toString());
+    if (params.search) qs.append('search', params.search);
+
+    const query = qs.toString();
+    return this.request<BlogsResponse>(`/blogs${query ? `?${query}` : ''}`, {}, false);
+  }
+
+  async getBlog(id: string): Promise<BlogPost> {
+    return this.request<BlogPost>(`/blogs/${id}`, {}, false);
+  }
+
+  async createBlog(data: BlogPost): Promise<BlogPost> {
+    return this.request<BlogPost>('/blogs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBlog(id: string, data: Partial<BlogPost>): Promise<BlogPost> {
+    return this.request<BlogPost>(`/blogs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBlog(id: string): Promise<void> {
+    return this.request<void>(`/blogs/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
+
 
 export const api = new ApiClient();

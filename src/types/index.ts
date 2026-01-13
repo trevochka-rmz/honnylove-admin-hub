@@ -167,3 +167,28 @@ export interface ProductFilters {
   page?: number;
   limit?: number;
 }
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  image: string;
+  category: string;
+  author: string;
+  date: string;
+  read_time: number;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogsResponse {
+  posts: BlogPost[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+  hasMore: boolean;
+}
+
