@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +45,8 @@ export default function ProductsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
 
@@ -70,12 +72,16 @@ export default function ProductsPage() {
   }, [filters]);
 
   const loadProducts = async () => {
-    setIsLoading(true);
+    const firstLoad = !hasLoadedRef.current;
+    if (firstLoad) setIsLoading(true);
+    else setIsFetching(true);
+
     try {
       const response = await api.getProducts(filters);
       setProducts(response.products);
       setTotal(response.total);
       setPages(response.pages);
+      hasLoadedRef.current = true;
     } catch (error) {
       toast({
         title: 'Ошибка загрузки',
@@ -84,15 +90,25 @@ export default function ProductsPage() {
       });
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
     }
   };
 
   const handleFilterChange = (key: keyof ProductFilters, value: any) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value || undefined,
-      page: 1,
-    }));
+    setFilters((prev) => {
+      const next: ProductFilters = {
+        ...prev,
+        [key]: value || undefined,
+      };
+
+      // При изменении фильтров всегда возвращаемся на 1 страницу.
+      // Но при пагинации page должен меняться корректно.
+      if (key !== 'page') {
+        next.page = 1;
+      }
+
+      return next;
+    });
   };
 
   const applyPriceFilter = () => {
@@ -140,7 +156,6 @@ export default function ProductsPage() {
     filters.isFeatured ||
     filters.isNew ||
     filters.isBestseller ||
-    filters.isOnSale ||
     filters.sort;
 
   return (
@@ -149,7 +164,12 @@ export default function ProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Товары</h1>
-          <p className="text-muted-foreground">Всего {total} товаров</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            Всего {total} товаров
+            {isFetching && !isLoading && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+          </p>
         </div>
         {isAdmin && (
           <Button onClick={() => navigate('/products/new')}>
@@ -302,13 +322,6 @@ export default function ProductsPage() {
                     onCheckedChange={(checked) => handleFilterChange('isBestseller', checked)}
                   />
                   <span className="text-sm">Бестселлеры</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={!!filters.isOnSale}
-                    onCheckedChange={(checked) => handleFilterChange('isOnSale', checked)}
-                  />
-                  <span className="text-sm">Со скидкой</span>
                 </label>
 
                 {hasActiveFilters && (

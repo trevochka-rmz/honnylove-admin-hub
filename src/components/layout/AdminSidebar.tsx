@@ -10,6 +10,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   User,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/products', icon: Package, label: 'Товары' },
   { to: '/categories', icon: FolderTree, label: 'Категории' },
   { to: '/brands', icon: Award, label: 'Бренды' },
+  { to: '/blogs', icon: BookOpen, label: 'Блоги' },
 ];
 
 export function AdminSidebar() {
