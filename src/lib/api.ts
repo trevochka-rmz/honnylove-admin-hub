@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -337,7 +337,7 @@ class ApiClient {
     return this.request<BlogPost>(`/blogs/${id}`, {}, false);
   }
 
-  async createBlog(data: BlogPost): Promise<BlogPost> {
+  async createBlog(data: Omit<BlogPost, 'id' | 'created_at' | 'updated_at' | 'date'>): Promise<BlogPost> {
     return this.request<BlogPost>('/blogs', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -355,6 +355,30 @@ class ApiClient {
     return this.request<void>(`/blogs/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    return this.request<void>(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getUsers(): Promise<User[]> {
+    return this.request<User[]>('/users');
+  }
+
+  async getUser(id: number): Promise<User> {
+    return this.request<User>(`/users/${id}`);
+  }
+
+  async getOrders(): Promise<Order[]> {
+    const response = await this.request<{ success: boolean; data: Order[] }>('/orders/admin/orders');
+    return response.data;
+  }
+
+  async getOrder(id: number): Promise<Order> {
+    const response = await this.request<{ success: boolean; data: Order }>(`/orders/admin/orders/${id}`);
+    return response.data;
   }
 }
 

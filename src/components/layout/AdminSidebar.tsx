@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   User,
   BookOpen,
+  ShoppingCart,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,8 +23,10 @@ import { useState } from 'react';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Главная' },
   { to: '/products', icon: Package, label: 'Товары' },
-  { to: '/categories', icon: FolderTree, label: 'Категории' },
+  { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
+  { to: '/users', icon: Users, label: 'Пользователи' },
   { to: '/brands', icon: Award, label: 'Бренды' },
+  { to: '/categories', icon: FolderTree, label: 'Категории' },
   { to: '/blogs', icon: BookOpen, label: 'Блоги' },
 ];
 

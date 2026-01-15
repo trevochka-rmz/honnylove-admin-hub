@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -30,17 +30,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Upload, X } from "lucide-react";
 
 const blogSchema = z.object({
-  id: z.string().trim().min(1, "ID обязателен"),
   title: z.string().trim().min(1, "Заголовок обязателен"),
   excerpt: z.string().trim().min(1, "Анонс обязателен"),
   content: z.string().trim().min(1, "Контент обязателен"),
-  image: z.string().trim().url("Нужен валидный URL изображения"),
   category: z.string().trim().min(1, "Категория обязательна"),
   author: z.string().trim().min(1, "Автор обязателен"),
-  date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Формат даты YYYY-MM-DD"),
   read_time: z.coerce.number().int().min(1, "Минимум 1 минута"),
   tagsText: z.string().optional().default(""),
 });
@@ -80,14 +77,11 @@ export default function BlogEditPage() {
 
   const defaultValues: BlogFormValues = useMemo(
     () => ({
-      id: "",
       title: "",
       excerpt: "",
       content: "",
-      image: "",
       category: "",
       author: "",
-      date: new Date().toISOString().slice(0, 10),
       read_time: 5,
       tagsText: "",
     }),
@@ -101,35 +95,38 @@ export default function BlogEditPage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!blogQuery.data) return;
     const post = blogQuery.data;
     form.reset({
-      id: post.id,
       title: post.title,
       excerpt: post.excerpt,
       content: post.content,
-      image: post.image,
       category: post.category,
       author: post.author,
-      date: post.date,
       read_time: post.read_time,
       tagsText: (post.tags ?? []).join(", "),
     });
+    if (post.image) {
+      setImagePreview(post.image);
+    }
   }, [blogQuery.data, form]);
 
   const watched = form.watch();
   const previewPost: BlogPost = useMemo(
     () => ({
-      id: watched.id,
+      id: id || "",
       title: watched.title,
       excerpt: watched.excerpt,
       content: watched.content,
-      image: watched.image,
+      image: imagePreview,
       category: watched.category,
       author: watched.author,
-      date: watched.date,
+      date: new Date().toISOString().slice(0, 10),
       read_time: watched.read_time,
       tags: watched.tagsText
         ? watched.tagsText
@@ -140,11 +137,40 @@ export default function BlogEditPage() {
       created_at: "",
       updated_at: "",
     }),
-    [watched]
+    [watched, imagePreview, id]
   );
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const onSubmit = async (values: BlogFormValues) => {
     if (!canEdit) return;
+
+    if (!imagePreview && isNew) {
+      toast({
+        title: "Ошибка",
+        description: "Загрузите изображение",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const tags = values.tagsText
       ? values.tagsText
@@ -153,25 +179,21 @@ export default function BlogEditPage() {
           .filter(Boolean)
       : [];
 
-    const payload: BlogPost = {
-      id: values.id,
+    const payload: Omit<BlogPost, "id" | "created_at" | "updated_at" | "date"> & { image?: string } = {
       title: values.title,
       excerpt: values.excerpt,
       content: values.content,
-      image: values.image,
+      image: imagePreview,
       category: values.category,
       author: values.author,
-      date: values.date,
       read_time: values.read_time,
       tags,
-      created_at: "",
-      updated_at: "",
     };
 
     setIsSaving(true);
     try {
       if (isNew) {
-        await api.createBlog(payload);
+        await api.createBlog(payload as any);
         toast({ title: "Успешно", description: "Пост создан" });
       } else {
         await api.updateBlog(id as string, payload);
@@ -299,19 +321,6 @@ export default function BlogEditPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="id">ID *</Label>
-                      <Input
-                        id="id"
-                        disabled={!isNew}
-                        {...form.register("id")}
-                        placeholder="Например: 7"
-                      />
-                      {form.formState.errors.id && (
-                        <p className="text-sm text-destructive">{form.formState.errors.id.message}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="title">Заголовок *</Label>
                       <Input id="title" {...form.register("title")} placeholder="Заголовок" />
                       {form.formState.errors.title && (
@@ -335,14 +344,51 @@ export default function BlogEditPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="image">Изображение (URL) *</Label>
-                        <Input id="image" {...form.register("image")} placeholder="https://..." />
-                        {form.formState.errors.image && (
-                          <p className="text-sm text-destructive">{form.formState.errors.image.message}</p>
+                    <div className="space-y-2">
+                      <Label>Изображение *</Label>
+                      <div className="border-2 border-dashed border-border rounded-lg p-4">
+                        {imagePreview ? (
+                          <div className="relative">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2 h-8 w-8"
+                              onClick={removeImage}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div
+                            className="flex flex-col items-center justify-center py-8 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              Нажмите для загрузки изображения
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              PNG, JPG, WEBP до 5MB
+                            </p>
+                          </div>
                         )}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageChange}
+                        />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="category">Категория *</Label>
                         <Input id="category" {...form.register("category")} placeholder="Уход за кожей" />
@@ -350,9 +396,6 @@ export default function BlogEditPage() {
                           <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
                         )}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="author">Автор *</Label>
                         <Input id="author" {...form.register("author")} placeholder="Админ" />
@@ -360,25 +403,20 @@ export default function BlogEditPage() {
                           <p className="text-sm text-destructive">{form.formState.errors.author.message}</p>
                         )}
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="date">Дата *</Label>
-                        <Input id="date" type="date" {...form.register("date")} />
-                        {form.formState.errors.date && (
-                          <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="read_time">Время чтения *</Label>
+                        <Label htmlFor="read_time">Время чтения (мин) *</Label>
                         <Input id="read_time" type="number" min={1} {...form.register("read_time")} />
                         {form.formState.errors.read_time && (
                           <p className="text-sm text-destructive">{form.formState.errors.read_time.message}</p>
                         )}
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="tagsText">Теги (через запятую)</Label>
-                      <Input id="tagsText" {...form.register("tagsText")} placeholder="уход, советы" />
+                      <div className="space-y-2">
+                        <Label htmlFor="tagsText">Теги (через запятую)</Label>
+                        <Input id="tagsText" {...form.register("tagsText")} placeholder="уход, советы" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -410,7 +448,6 @@ export default function BlogEditPage() {
                   <div className="flex flex-wrap gap-2">
                     {previewPost.category && <span className="text-sm text-muted-foreground">Категория: {previewPost.category}</span>}
                     {previewPost.author && <span className="text-sm text-muted-foreground">Автор: {previewPost.author}</span>}
-                    {previewPost.date && <span className="text-sm text-muted-foreground">Дата: {previewPost.date}</span>}
                     {previewPost.read_time ? (
                       <span className="text-sm text-muted-foreground">{previewPost.read_time} мин</span>
                     ) : null}
@@ -435,6 +472,7 @@ export default function BlogEditPage() {
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>Контент поддерживает Markdown (заголовки, списки, **жирный**, ссылки).</p>
               <p>HTML внутри Markdown не выполняется (безопасно).</p>
+              <p>ID поста генерируется автоматически сервером.</p>
             </CardContent>
           </Card>
         </div>

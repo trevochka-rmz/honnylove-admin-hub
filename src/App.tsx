@@ -17,6 +17,10 @@ import BrandEditPage from "@/pages/BrandEditPage";
 import BlogsPage from "@/pages/BlogsPage";
 import BlogEditPage from "@/pages/BlogEditPage";
 import ProfilePage from "@/pages/ProfilePage";
+import OrdersPage from "@/pages/OrdersPage";
+import OrderEditPage from "@/pages/OrderEditPage";
+import UsersPage from "@/pages/UsersPage";
+import UserEditPage from "@/pages/UserEditPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +45,10 @@ const App = () => (
               <Route index element={<DashboardPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/:id" element={<ProductEditPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders/:id" element={<OrderEditPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="users/:id" element={<UserEditPage />} />
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="categories/:id" element={<CategoryEditPage />} />
               <Route path="brands" element={<BrandsPage />} />
