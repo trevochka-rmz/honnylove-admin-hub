@@ -27,10 +27,8 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
-  X,
   Loader2,
   Package,
 } from 'lucide-react';
@@ -179,7 +177,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Search & Filters */}
+      {/* Search & Sort */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -210,129 +208,7 @@ export default function ProductsPage() {
                 <SelectItem value="rating">По рейтингу</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Filter Toggle */}
-            <Button
-              variant={showFilters ? 'secondary' : 'outline'}
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Фильтры
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="ml-1 bg-primary text-primary-foreground">
-                  !
-                </Badge>
-              )}
-            </Button>
           </div>
-
-          {/* Expanded Filters */}
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t border-border space-y-4 animate-fade-in">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Brand Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Бренд</label>
-                  <Select
-                    value={filters.brandId?.toString() || ''}
-                    onValueChange={(value) =>
-                      handleFilterChange('brandId', value ? Number(value) : undefined)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Все бренды" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Все бренды</SelectItem>
-                      {brands.map((brand) => (
-                        <SelectItem key={brand.id} value={brand.id.toString()}>
-                          {brand.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Category Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Категория</label>
-                  <Select
-                    value={filters.categoryId?.toString() || ''}
-                    onValueChange={(value) =>
-                      handleFilterChange('categoryId', value ? Number(value) : undefined)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Все категории" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      <SelectItem value="">Все категории</SelectItem>
-                      {flatCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {'—'.repeat(cat.level)} {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Price Range */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Цена от</label>
-                  <Input
-                    type="number"
-                    placeholder="Мин. цена"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    onBlur={applyPriceFilter}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Цена до</label>
-                  <Input
-                    type="number"
-                    placeholder="Макс. цена"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    onBlur={applyPriceFilter}
-                  />
-                </div>
-              </div>
-
-              {/* Quick Filters */}
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={!!filters.isFeatured}
-                    onCheckedChange={(checked) => handleFilterChange('isFeatured', checked)}
-                  />
-                  <span className="text-sm">Рекомендованные</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={!!filters.isNew}
-                    onCheckedChange={(checked) => handleFilterChange('isNew', checked)}
-                  />
-                  <span className="text-sm">Новинки</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={!!filters.isBestseller}
-                    onCheckedChange={(checked) => handleFilterChange('isBestseller', checked)}
-                  />
-                  <span className="text-sm">Бестселлеры</span>
-                </label>
-
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto">
-                    <X className="mr-1 h-3 w-3" />
-                    Сбросить
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -2,14 +2,38 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  role: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  address: string;
+  role: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  address: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  discount_percentage?: string;
+  totalUsers?: number;
+  activeOrdersCount?: number;
+}
+
+export interface Order {
+  id: number;
+  user_id: number;
+  status: string;
+  total_amount: string;
+  shipping_address: string | null;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  shipping_cost: string;
+  tax_amount: string;
+  discount_amount: string;
+  tracking_number: string | null;
+  notes: string | null;
+  user_email: string;
+  first_name: string | null;
+  last_name: string | null;
+  items_count: string;
+  total_quantity: string | null;
 }
 
 export interface AuthResponse {
