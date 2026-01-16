@@ -15,6 +15,29 @@ export interface User {
   activeOrdersCount?: number;
 }
 
+export interface OrderItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_sku: string;
+  product_image: string;
+  product_description: string;
+  quantity: number;
+  price: number;
+  discount_price: number | null;
+  line_total: number;
+  created_at: string;
+}
+
+export interface OrderStatusHistory {
+  id: number;
+  status: string;
+  created_at: string;
+  changed_by_user_id: number;
+  changed_by_email: string;
+  changed_by_name: string;
+}
+
 export interface Order {
   id: number;
   user_id: number;
@@ -30,10 +53,49 @@ export interface Order {
   tracking_number: string | null;
   notes: string | null;
   user_email: string;
-  first_name: string | null;
-  last_name: string | null;
+  user_first_name?: string | null;
+  user_last_name?: string | null;
+  user_phone?: string | null;
+  user_default_address?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   items_count: string;
-  total_quantity: string | null;
+  total_quantity?: string | null;
+  total_items_quantity?: string | null;
+  items?: OrderItem[];
+  status_history?: OrderStatusHistory[];
+}
+
+export interface OrdersResponse {
+  success: boolean;
+  orders: Order[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+}
+
+export interface OrderFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  user_id?: number;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+}
+
+export interface OrderStatusesResponse {
+  success: boolean;
+  data: {
+    statuses: string[];
+    descriptions: Record<string, string>;
+    cancellable: string[];
+    deletable: string[];
+  };
 }
 
 export interface AuthResponse {
@@ -215,4 +277,3 @@ export interface BlogsResponse {
   limit: number;
   hasMore: boolean;
 }
-
