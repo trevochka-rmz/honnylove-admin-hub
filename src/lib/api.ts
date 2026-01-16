@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -232,6 +232,12 @@ class ApiClient {
     });
   }
 
+  async deleteProduct(id: string): Promise<void> {
+    return this.request<void>(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getProfile(): Promise<User> {
     return this.request<User>('/users/profile');
   }
@@ -357,12 +363,6 @@ class ApiClient {
     });
   }
 
-  async deleteProduct(id: string): Promise<void> {
-    return this.request<void>(`/products/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
   async getUsers(): Promise<User[]> {
     return this.request<User[]>('/users');
   }
@@ -371,14 +371,81 @@ class ApiClient {
     return this.request<User>(`/users/${id}`);
   }
 
-  async getOrders(): Promise<Order[]> {
-    const response = await this.request<{ success: boolean; data: Order[] }>('/orders/admin/orders');
-    return response.data;
+  // Orders
+  async getOrderStatuses(): Promise<OrderStatusesResponse> {
+    return this.request<OrderStatusesResponse>('/orders/statuses', {}, false);
+  }
+
+  async getOrders(filters: OrderFilters = {}): Promise<OrdersResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.status) params.append('status', filters.status);
+    if (filters.user_id) params.append('user_id', filters.user_id.toString());
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    if (filters.search) params.append('search', filters.search);
+
+    const query = params.toString();
+    return this.request<OrdersResponse>(`/orders/admin/orders${query ? `?${query}` : ''}`);
   }
 
   async getOrder(id: number): Promise<Order> {
-    const response = await this.request<{ success: boolean; data: Order }>(`/orders/admin/orders/${id}`);
-    return response.data;
+    const response = await this.request<{ success: boolean; order: Order }>(`/orders/${id}`);
+    return response.order;
+  }
+
+  async createOrder(data: {
+    user_id: number;
+    items: { product_id: number; quantity: number }[];
+    shipping_address: string;
+    payment_method: string;
+    notes?: string;
+    shipping_cost?: number;
+    tax_amount?: number;
+    discount_amount?: number;
+    tracking_number?: string;
+  }): Promise<Order> {
+    const response = await this.request<{ success: boolean; order: Order }>('/orders/admin/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.order;
+  }
+
+  async updateOrder(id: number, data: Partial<{
+    shipping_address: string;
+    payment_method: string;
+    shipping_cost: number;
+    tax_amount: number;
+    discount_amount: number;
+    tracking_number: string;
+    notes: string;
+  }>): Promise<Order> {
+    const response = await this.request<{ success: boolean; order: Order }>(`/orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.order;
+  }
+
+  async deleteOrder(id: number): Promise<void> {
+    await this.request<{ success: boolean }>(`/orders/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addOrderItem(orderId: number, data: { product_id: number; quantity: number }): Promise<void> {
+    await this.request<{ success: boolean }>(`/orders/admin/orders/${orderId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removeOrderItem(orderId: number, itemId: number): Promise<void> {
+    await this.request<{ success: boolean }>(`/orders/admin/orders/${orderId}/items/${itemId}`, {
+      method: 'DELETE',
+    });
   }
 }
 
