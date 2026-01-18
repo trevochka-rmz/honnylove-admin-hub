@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -242,8 +242,15 @@ class ApiClient {
     return this.request<User>('/users/profile');
   }
 
-  async getBrands(): Promise<BrandsResponse> {
-    return this.request<BrandsResponse>('/brands/brief', {}, false);
+  async getBrands(filters: BrandFilters = {}): Promise<BrandsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.search) params.append('search', filters.search);
+    if (filters.filter) params.append('filter', filters.filter);
+
+    const query = params.toString();
+    return this.request<BrandsResponse>(`/brands${query ? `?${query}` : ''}`, {}, false);
   }
 
   async getBrand(id: number): Promise<BrandDetail> {

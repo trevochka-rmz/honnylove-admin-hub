@@ -186,10 +186,35 @@ export interface BrandDetail {
   is_active?: boolean;
 }
 
+export interface BrandListItem {
+  id: number;
+  name: string;
+  logo: string;
+  description: string | null;
+  fullDescription: string | null;
+  country: string | null;
+  founded: string | null;
+  philosophy: string | null;
+  highlights: string[];
+  productsCount: string;
+  isFeatured: boolean;
+  slug: string;
+}
+
 export interface BrandsResponse {
-  success: boolean;
-  count: number;
-  brands: Brand[];
+  brands: BrandListItem[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface BrandFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  filter?: 'popular' | 'new' | 'recommended';
 }
 
 export interface CategoryDetail {

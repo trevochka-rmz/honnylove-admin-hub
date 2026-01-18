@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import type { BrandDetail } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,17 +9,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Save, Image as ImageIcon, Plus, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Trash2, Plus, X } from 'lucide-react';
 
 export default function BrandEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const isNew = id === 'new';
+  const isAdmin = user?.role === 'admin';
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [brand, setBrand] = useState<BrandDetail | null>(null);
 
   const [formData, setFormData] = useState({
@@ -129,6 +145,26 @@ export default function BrandEditPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id || isNew) return;
+    
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteBrand(parseInt(id));
+      toast({
+        title: 'Бренд удалён',
+        description: `Бренд "${brand?.name}" успешно удалён`,
+      });
+      navigate('/brands');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось удалить бренд';
+      setDeleteError(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -140,17 +176,40 @@ export default function BrandEditPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/brands')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {isNew ? 'Новый бренд' : `Редактирование: ${brand?.name}`}
-          </h1>
-          {!isNew && brand && (
-            <p className="text-muted-foreground">/{brand.slug}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/brands')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isNew ? 'Новый бренд' : `Редактирование: ${brand?.name}`}
+            </h1>
+            {!isNew && brand && (
+              <p className="text-muted-foreground">/{brand.slug}</p>
+            )}
+          </div>
+        </div>
+        
+        {/* Header Actions */}
+        <div className="flex items-center gap-2">
+          {!isNew && isAdmin && (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Удалить
+            </Button>
           )}
+          <Button onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {isNew ? 'Создать' : 'Сохранить'}
+          </Button>
         </div>
       </div>
 
@@ -321,22 +380,44 @@ export default function BrandEditPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Actions */}
-        <div className="flex gap-4">
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {isNew ? 'Создать бренд' : 'Сохранить изменения'}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/brands')}>
-            Отмена
-          </Button>
-        </div>
       </form>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить бренд?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить бренд "{brand?.name}"? Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {deleteError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive">
+              <p className="font-medium mb-1">Невозможно удалить</p>
+              <p>{deleteError}</p>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteError(null)}>Отмена</AlertDialogCancel>
+            {!deleteError && (
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Удалить
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     base: '/admin/',
     server: {
         host: '::',
-        port: 8090,
+        port: 8080,
     },
     plugins: [react(), mode === 'development' && componentTagger()].filter(
         Boolean
