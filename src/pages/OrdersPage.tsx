@@ -191,14 +191,14 @@ export default function OrdersPage() {
 
             {/* Status filter */}
             <Select
-              value={filters.status || ''}
-              onValueChange={(v) => handleFilterChange('status', v)}
+              value={filters.status || 'all'}
+              onValueChange={(v) => handleFilterChange('status', v === 'all' ? undefined : v)}
             >
               <SelectTrigger className="w-full md:w-[200px]">
                 <SelectValue placeholder="Все статусы" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Все статусы</SelectItem>
+                <SelectItem value="all">Все статусы</SelectItem>
                 {statuses.map((s) => (
                   <SelectItem key={s} value={s}>
                     {statusDescriptions[s] || s}
