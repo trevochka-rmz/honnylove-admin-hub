@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Category } from '@/types';
@@ -14,50 +14,44 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FolderTree, Image as ImageIcon, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
+import { Loader2, FolderTree, Image as ImageIcon, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface FlatCategory {
-  id: number;
-  name: string;
-  slug: string;
-  image_url: string;
-  product_count: string;
-  level: number;
-  hasChildren: boolean;
+const REFRESH_INTERVAL = 30000;
+
+interface CategoryNode extends Category {
+  isOpen?: boolean;
 }
 
 export default function CategoriesPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [flatCategories, setFlatCategories] = useState<FlatCategory[]>([]);
+  const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<FlatCategory | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.getCategories();
       setCategories(response.data);
-      setFlatCategories(flattenCategories(response.data));
+      // Expand all by default
+      const allIds = new Set<number>();
+      const collectIds = (cats: Category[]) => {
+        for (const cat of cats) {
+          if (cat.children && cat.children.length > 0) {
+            allIds.add(cat.id);
+            collectIds(cat.children);
+          }
+        }
+      };
+      collectIds(response.data);
+      setExpandedIds(allIds);
     } catch (error) {
       toast({
         title: 'Ошибка загрузки',
@@ -67,56 +61,37 @@ export default function CategoriesPage() {
     } finally {
       setIsLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
+    const interval = setInterval(loadCategories, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [loadCategories]);
+
+  const toggleExpand = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
-  const flattenCategories = (cats: Category[], level = 1): FlatCategory[] => {
-    const result: FlatCategory[] = [];
-    
+  const countAllCategories = (cats: Category[]): number => {
+    let count = cats.length;
     for (const cat of cats) {
-      result.push({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        image_url: cat.image_url,
-        product_count: cat.product_count,
-        level,
-        hasChildren: !!(cat.children && cat.children.length > 0),
-      });
-      
-      if (cat.children && cat.children.length > 0) {
-        result.push(...flattenCategories(cat.children, level + 1));
+      if (cat.children) {
+        count += countAllCategories(cat.children);
       }
     }
-    
-    return result;
-  };
-
-  const handleDelete = async () => {
-    if (!categoryToDelete) return;
-    
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.deleteCategory(categoryToDelete.id);
-      toast({
-        title: 'Категория удалена',
-        description: `Категория "${categoryToDelete.name}" успешно удалена`,
-      });
-      setDeleteDialogOpen(false);
-      setCategoryToDelete(null);
-      loadCategories();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось удалить категорию';
-      setDeleteError(message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const openDeleteDialog = (category: FlatCategory) => {
-    setCategoryToDelete(category);
-    setDeleteError(null);
-    setDeleteDialogOpen(true);
+    return count;
   };
 
   const getLevelBadgeVariant = (level: number) => {
@@ -130,13 +105,108 @@ export default function CategoriesPage() {
     }
   };
 
+  const renderCategory = (category: Category, level: number = 1) => {
+    const hasChildren = category.children && category.children.length > 0;
+    const isExpanded = expandedIds.has(category.id);
+
+    return (
+      <div key={category.id}>
+        <TableRow
+          className="cursor-pointer hover:bg-muted/50"
+          onClick={() => navigate(`/categories/${category.id}`)}
+        >
+          <TableCell>
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+              {category.image_url ? (
+                <img
+                  src={category.image_url}
+                  alt={category.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <ImageIcon className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell>
+            <div
+              className={cn(
+                'flex items-center gap-2',
+                level === 2 && 'pl-6',
+                level === 3 && 'pl-12'
+              )}
+            >
+              {hasChildren && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleExpand(category.id);
+                  }}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+              {!hasChildren && level > 1 && (
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                </div>
+              )}
+              <div>
+                <p className={cn(
+                  'font-medium',
+                  level === 1 && 'text-foreground',
+                  level > 1 && 'text-muted-foreground'
+                )}>
+                  {category.name}
+                </p>
+                <p className="text-xs text-muted-foreground">/{category.slug}</p>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell>
+            <Badge variant={getLevelBadgeVariant(level)}>
+              Уровень {level}
+            </Badge>
+          </TableCell>
+          <TableCell>
+            <span className="text-muted-foreground">{category.product_count}</span>
+          </TableCell>
+          <TableCell>
+            {hasChildren && (
+              <span className="text-muted-foreground text-sm">
+                {category.children!.length} подкатегорий
+              </span>
+            )}
+          </TableCell>
+        </TableRow>
+        
+        {hasChildren && isExpanded && (
+          <>
+            {category.children!.map((child) => renderCategory(child, level + 1))}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const totalCategories = countAllCategories(categories);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Категории</h1>
-          <p className="text-muted-foreground">Всего {flatCategories.length} категорий</p>
+          <p className="text-muted-foreground">Всего {totalCategories} категорий</p>
         </div>
         <Button onClick={() => navigate('/categories/new')}>
           <Plus className="mr-2 h-4 w-4" />
@@ -149,7 +219,7 @@ export default function CategoriesPage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : flatCategories.length === 0 ? (
+      ) : categories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <FolderTree className="h-12 w-12 mb-4 opacity-50" />
@@ -169,123 +239,15 @@ export default function CategoriesPage() {
                 <TableHead>Название</TableHead>
                 <TableHead className="w-24">Уровень</TableHead>
                 <TableHead className="w-28">Товаров</TableHead>
-                <TableHead className="w-24 text-right">Действия</TableHead>
+                <TableHead className="w-36">Подкатегории</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flatCategories.map((category) => (
-                <TableRow key={category.id} className="group">
-                  <TableCell>
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                      {category.image_url ? (
-                        <img
-                          src={category.image_url}
-                          alt={category.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <ImageIcon className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div
-                      className={cn(
-                        'flex items-center gap-2',
-                        category.level === 2 && 'pl-6',
-                        category.level === 3 && 'pl-12'
-                      )}
-                    >
-                      {category.level > 1 && (
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className={cn(
-                          'font-medium',
-                          category.level === 1 && 'text-foreground',
-                          category.level > 1 && 'text-muted-foreground'
-                        )}>
-                          {category.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">/{category.slug}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getLevelBadgeVariant(category.level)}>
-                      Уровень {category.level}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-muted-foreground">{category.product_count}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(`/categories/${category.id}`)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDeleteDialog(category)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {categories.map((category) => renderCategory(category, 1))}
             </TableBody>
           </Table>
         </Card>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Вы уверены, что хотите удалить категорию "{categoryToDelete?.name}"? 
-              {categoryToDelete?.hasChildren && ' Все подкатегории также будут удалены.'}
-              {' '}Это действие нельзя отменить.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {deleteError && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive">
-              <p className="font-medium mb-1">Невозможно удалить</p>
-              <p>{deleteError}</p>
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteError(null)}>Отмена</AlertDialogCancel>
-            {!deleteError && (
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                Удалить
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
