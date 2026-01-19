@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Category } from '@/types';
@@ -13,13 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FolderTree, Image as ImageIcon, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Loader2, FolderTree, Image as ImageIcon, Plus, ChevronRight, ChevronDown, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const REFRESH_INTERVAL = 30000;
@@ -34,6 +29,7 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
 
   const loadCategories = useCallback(async () => {
     setIsLoading(true);
@@ -105,24 +101,38 @@ export default function CategoriesPage() {
     }
   };
 
-  const renderCategory = (category: Category, level: number = 1) => {
-    const hasChildren = category.children && category.children.length > 0;
-    const isExpanded = expandedIds.has(category.id);
+  const handleImageError = (id: number) => {
+    setImageErrors((prev) => new Set(prev).add(id));
+  };
 
-    return (
-      <div key={category.id}>
+  const renderCategoryRows = (categoryList: Category[], level: number = 1): React.ReactNode[] => {
+    const rows: React.ReactNode[] = [];
+
+    for (const category of categoryList) {
+      const hasChildren = category.children && category.children.length > 0;
+      const isExpanded = expandedIds.has(category.id);
+      const hasImageError = imageErrors.has(category.id);
+
+      rows.push(
         <TableRow
+          key={category.id}
           className="cursor-pointer hover:bg-muted/50"
           onClick={() => navigate(`/categories/${category.id}`)}
         >
           <TableCell>
             <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-              {category.image_url ? (
+              {category.image_url && !hasImageError ? (
                 <img
                   src={category.image_url}
                   alt={category.name}
                   className="w-full h-full object-cover"
+                  onError={() => handleImageError(category.id)}
                 />
+              ) : hasImageError ? (
+                <div className="w-full h-full flex items-center justify-center text-amber-500 bg-amber-50 relative">
+                  <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+                  <AlertCircle className="h-2.5 w-2.5 absolute top-1 right-1" />
+                </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   <ImageIcon className="h-4 w-4" />
@@ -188,14 +198,15 @@ export default function CategoriesPage() {
             )}
           </TableCell>
         </TableRow>
-        
-        {hasChildren && isExpanded && (
-          <>
-            {category.children!.map((child) => renderCategory(child, level + 1))}
-          </>
-        )}
-      </div>
-    );
+      );
+
+      // Рекурсивно добавляем детей, если раскрыто
+      if (hasChildren && isExpanded) {
+        rows.push(...renderCategoryRows(category.children!, level + 1));
+      }
+    }
+
+    return rows;
   };
 
   const totalCategories = countAllCategories(categories);
@@ -243,7 +254,7 @@ export default function CategoriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categories.map((category) => renderCategory(category, 1))}
+              {renderCategoryRows(categories)}
             </TableBody>
           </Table>
         </Card>
