@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Save, Trash2, Image as ImageIcon } from 'lucide-react';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export default function CategoryEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,7 @@ export default function CategoryEditPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryDetail | null>(null);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -127,27 +129,25 @@ export default function CategoryEditPage() {
 
     setIsSaving(true);
     try {
+      const fd = new FormData();
+      fd.append('name', formData.name);
+      if (formData.description) fd.append('description', formData.description);
+      if (formData.parent_id) fd.append('parent_id', formData.parent_id.toString());
+      fd.append('display_order', formData.display_order.toString());
+      fd.append('is_active', formData.is_active.toString());
+      
+      if (imageFile) {
+        fd.append('image', imageFile);
+      }
+
       if (isNew) {
-        const createData: { name: string; parent_id?: number; description?: string; is_active?: boolean } = {
-          name: formData.name,
-        };
-        if (formData.parent_id) createData.parent_id = formData.parent_id;
-        if (formData.description) createData.description = formData.description;
-        createData.is_active = formData.is_active;
-        
-        await api.createCategory(createData);
+        await api.createCategory(fd);
         toast({
           title: 'Категория создана',
           description: 'Категория успешно создана',
         });
       } else if (id) {
-        await api.updateCategory(parseInt(id), {
-          name: formData.name,
-          description: formData.description || undefined,
-          parent_id: formData.parent_id,
-          display_order: formData.display_order,
-          is_active: formData.is_active,
-        });
+        await api.updateCategory(parseInt(id), fd);
         toast({
           title: 'Категория обновлена',
           description: 'Изменения сохранены',
@@ -297,23 +297,19 @@ export default function CategoryEditPage() {
 
           {/* Side Info */}
           <div className="space-y-6">
-            {/* Image Preview */}
-            {!isNew && category?.image_url && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Изображение</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                    <img
-                      src={category.image_url}
-                      alt={category.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Image Upload */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Изображение</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImageUpload
+                  value={category?.image_url}
+                  onChange={setImageFile}
+                  aspectRatio="square"
+                />
+              </CardContent>
+            </Card>
 
             {/* Status */}
             <Card>

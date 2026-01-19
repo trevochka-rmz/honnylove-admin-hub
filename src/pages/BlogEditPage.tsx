@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { ArrowLeft, Loader2, Save, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const blogSchema = z.object({
   title: z.string().trim().min(1, "Заголовок обязателен"),
@@ -96,8 +97,7 @@ export default function BlogEditPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [existingImage, setExistingImage] = useState<string>("");
 
   useEffect(() => {
     if (!blogQuery.data) return;
@@ -112,7 +112,7 @@ export default function BlogEditPage() {
       tagsText: (post.tags ?? []).join(", "),
     });
     if (post.image) {
-      setImagePreview(post.image);
+      setExistingImage(post.image);
     }
   }, [blogQuery.data, form]);
 
@@ -123,7 +123,7 @@ export default function BlogEditPage() {
       title: watched.title,
       excerpt: watched.excerpt,
       content: watched.content,
-      image: imagePreview,
+      image: existingImage,
       category: watched.category,
       author: watched.author,
       date: new Date().toISOString().slice(0, 10),
@@ -137,33 +137,13 @@ export default function BlogEditPage() {
       created_at: "",
       updated_at: "",
     }),
-    [watched, imagePreview, id]
+    [watched, existingImage, id]
   );
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
 
   const onSubmit = async (values: BlogFormValues) => {
     if (!canEdit) return;
 
-    if (!imagePreview && isNew) {
+    if (!existingImage && !imageFile && isNew) {
       toast({
         title: "Ошибка",
         description: "Загрузите изображение",
@@ -179,24 +159,29 @@ export default function BlogEditPage() {
           .filter(Boolean)
       : [];
 
-    const payload: Omit<BlogPost, "id" | "created_at" | "updated_at" | "date"> & { image?: string } = {
-      title: values.title,
-      excerpt: values.excerpt,
-      content: values.content,
-      image: imagePreview,
-      category: values.category,
-      author: values.author,
-      read_time: values.read_time,
-      tags,
-    };
-
     setIsSaving(true);
     try {
+      const fd = new FormData();
+      fd.append('title', values.title);
+      fd.append('excerpt', values.excerpt);
+      fd.append('content', values.content);
+      fd.append('category', values.category);
+      fd.append('author', values.author);
+      fd.append('read_time', values.read_time.toString());
+      
+      if (tags.length > 0) {
+        fd.append('tags', JSON.stringify(tags));
+      }
+
+      if (imageFile) {
+        fd.append('image', imageFile);
+      }
+
       if (isNew) {
-        await api.createBlog(payload as any);
+        await api.createBlog(fd);
         toast({ title: "Успешно", description: "Пост создан" });
       } else {
-        await api.updateBlog(id as string, payload);
+        await api.updateBlog(id as string, fd);
         toast({ title: "Успешно", description: "Пост обновлён" });
       }
       navigate("/blogs");
@@ -344,50 +329,6 @@ export default function BlogEditPage() {
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Изображение *</Label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-4">
-                        {imagePreview ? (
-                          <div className="relative">
-                            <img
-                              src={imagePreview}
-                              alt="Preview"
-                              className="w-full h-48 object-cover rounded-lg"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              className="absolute top-2 right-2 h-8 w-8"
-                              onClick={removeImage}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div
-                            className="flex flex-col items-center justify-center py-8 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Нажмите для загрузки изображения
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              PNG, JPG, WEBP до 5MB
-                            </p>
-                          </div>
-                        )}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleImageChange}
-                        />
-                      </div>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="category">Категория *</Label>
@@ -434,10 +375,10 @@ export default function BlogEditPage() {
                     <p className="text-sm text-muted-foreground">{previewPost.excerpt}</p>
                   </div>
 
-                  {previewPost.image && (
+                  {existingImage && (
                     <div className="rounded-lg overflow-hidden bg-muted">
                       <img
-                        src={previewPost.image}
+                        src={existingImage.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${existingImage}` : existingImage}
                         alt={previewPost.title}
                         className="w-full h-auto"
                         loading="lazy"
@@ -454,25 +395,40 @@ export default function BlogEditPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents as any}>
-                      {previewPost.content || ""}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {previewPost.content}
                     </ReactMarkdown>
                   </div>
+
+                  {previewPost.tags && previewPost.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-4 border-t border-border">
+                      {previewPost.tags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-muted text-xs rounded">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Справка</CardTitle>
+              <CardTitle>Изображение</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>Контент поддерживает Markdown (заголовки, списки, **жирный**, ссылки).</p>
-              <p>HTML внутри Markdown не выполняется (безопасно).</p>
-              <p>ID поста генерируется автоматически сервером.</p>
+            <CardContent>
+              <ImageUpload
+                value={existingImage}
+                onChange={setImageFile}
+                onRemove={() => setExistingImage("")}
+                aspectRatio="video"
+                disabled={!canEdit}
+              />
             </CardContent>
           </Card>
         </div>

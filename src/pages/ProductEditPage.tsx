@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Product, Brand, Category } from '@/types';
+import type { Product, Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, Loader2, Package, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +37,7 @@ import {
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface CategoryNode {
-  id: number;
-  name: string;
-  level: number;
-  children?: CategoryNode[];
-}
+import { ImageUpload, GalleryUpload } from '@/components/ImageUpload';
 
 function CategorySelector({ 
   categories, 
@@ -125,8 +119,12 @@ export default function ProductEditPage() {
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brands, setBrands] = useState<{ id: number; name: string; logo: string }[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // Image state
+  const [mainImage, setMainImage] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<(File | string)[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -155,7 +153,7 @@ export default function ProductEditPage() {
   const [product, setProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getBrands(), api.getCategories()]).then(([brandsRes, categoriesRes]) => {
+    Promise.all([api.getBrandsBrief(), api.getCategories()]).then(([brandsRes, categoriesRes]) => {
       setBrands(brandsRes.brands);
       setCategories(categoriesRes.data);
     });
@@ -193,6 +191,10 @@ export default function ProductEditPage() {
         meta_description: data.meta_description || '',
         stockQuantity: data.stockQuantity?.toString() || '',
       });
+      // Set existing gallery images
+      if (data.images && data.images.length > 0) {
+        setGalleryFiles(data.images);
+      }
     } catch (error) {
       toast({
         title: 'Ошибка',
@@ -244,94 +246,59 @@ export default function ProductEditPage() {
 
     setIsSaving(true);
     try {
-      if (isNew) {
-        const createAttributes: Record<string, any> = {};
-        if (formData.ingredients) createAttributes.ingredients = formData.ingredients;
-        if (formData.usage) createAttributes.usage = formData.usage;
-        if (formData.variant_name || formData.variant_value) {
-          createAttributes.variants = [
-            {
-              name: formData.variant_name || 'Объём',
-              value: formData.variant_value,
-            },
-          ];
-        }
+      const fd = new FormData();
+      
+      // Required fields
+      fd.append('name', formData.name);
+      fd.append('purchase_price', formData.purchasePrice || '0');
+      fd.append('retail_price', formData.price || '0');
+      fd.append('brand_id', formData.brand_id || '1');
+      fd.append('category_id', formData.category_id || '1');
+      fd.append('product_type', formData.product_type);
 
-        await api.createProduct({
-          name: formData.name,
-          purchase_price: Number(formData.purchasePrice) || 0,
-          retail_price: Number(formData.price) || 0,
-          brand_id: Number(formData.brand_id) || 1,
-          category_id: Number(formData.category_id) || 1,
-          product_type: formData.product_type,
-          stockQuantity: formData.stockQuantity === '' ? undefined : Number(formData.stockQuantity),
-          attributes: Object.keys(createAttributes).length ? createAttributes : undefined,
-        });
+      // Optional fields
+      if (formData.description) fd.append('description', formData.description);
+      if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
+      if (formData.target_audience) fd.append('target_audience', formData.target_audience);
+      if (formData.skin_type) fd.append('skin_type', formData.skin_type);
+      if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
+      if (formData.meta_title) fd.append('meta_title', formData.meta_title);
+      if (formData.meta_description) fd.append('meta_description', formData.meta_description);
+
+      fd.append('is_new', formData.isNew.toString());
+      fd.append('is_bestseller', formData.isBestseller.toString());
+      fd.append('is_featured', formData.isFeatured.toString());
+
+      // Attributes
+      const attributes: Record<string, any> = {};
+      if (formData.ingredients) attributes.ingredients = formData.ingredients;
+      if (formData.usage) attributes.usage = formData.usage;
+      if (formData.variant_name || formData.variant_value) {
+        attributes.variants = [{
+          name: formData.variant_name || 'Объём',
+          value: formData.variant_value,
+        }];
+      }
+      if (Object.keys(attributes).length > 0) {
+        fd.append('attributes', JSON.stringify(attributes));
+      }
+
+      // Images
+      if (mainImage) {
+        fd.append('mainImage', mainImage);
+      }
+
+      // Gallery
+      const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
+      galleryFilesOnly.forEach((file) => {
+        fd.append('gallery[]', file);
+      });
+
+      if (isNew) {
+        await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
-        const updates: Record<string, any> = {};
-        
-        if (formData.name !== product?.name) updates.name = formData.name;
-        if (formData.description !== product?.description) updates.description = formData.description;
-        if (formData.purchasePrice !== product?.purchasePrice) updates.purchase_price = Number(formData.purchasePrice);
-        if (formData.price !== product?.price) updates.retail_price = Number(formData.price);
-        if (formData.discountPrice !== (product?.discountPrice || '')) {
-          updates.discount_price = formData.discountPrice ? Number(formData.discountPrice) : undefined;
-        }
-        if (formData.brand_id !== product?.brand_id?.toString()) updates.brand_id = Number(formData.brand_id);
-        if (formData.category_id !== product?.category_id?.toString()) updates.category_id = Number(formData.category_id);
-        if (formData.product_type !== product?.product_type) updates.product_type = formData.product_type;
-        if (formData.target_audience !== product?.target_audience) updates.target_audience = formData.target_audience;
-        if (formData.skin_type !== (product?.skin_type || '')) updates.skin_type = formData.skin_type || undefined;
-        if (formData.isNew !== product?.isNew) updates.is_new = formData.isNew;
-        if (formData.isBestseller !== product?.isBestseller) updates.is_bestseller = formData.isBestseller;
-        if (formData.isFeatured !== product?.isFeatured) updates.is_featured = formData.isFeatured;
-        if (formData.stockQuantity !== (product?.stockQuantity?.toString() || '')) {
-          updates.stockQuantity = formData.stockQuantity ? Number(formData.stockQuantity) : 0;
-        }
-        if (formData.meta_title !== (product?.meta_title || '')) {
-          updates.meta_title = formData.meta_title || undefined;
-        }
-        if (formData.meta_description !== (product?.meta_description || '')) {
-          updates.meta_description = formData.meta_description || undefined;
-        }
-
-        // Handle attributes separately
-        const attributes: Record<string, any> = {};
-        if (formData.ingredients !== (product?.ingredients || '')) {
-          attributes.ingredients = formData.ingredients;
-        }
-        if (formData.usage !== (product?.usage || '')) {
-          attributes.usage = formData.usage;
-        }
-
-        const currentVariant = product?.variants?.[0];
-        const currentVariantName = currentVariant?.name || '';
-        const currentVariantValue = currentVariant?.value || '';
-
-        if (
-          formData.variant_name !== currentVariantName ||
-          formData.variant_value !== currentVariantValue
-        ) {
-          if (formData.variant_name || formData.variant_value) {
-            attributes.variants = [
-              {
-                name: formData.variant_name || currentVariantName || 'Объём',
-                value: formData.variant_value || currentVariantValue,
-              },
-            ];
-          } else {
-            attributes.variants = [];
-          }
-        }
-
-        if (Object.keys(attributes).length > 0) {
-          updates.attributes = attributes;
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await api.updateProduct(id, updates);
-        }
+        await api.updateProductWithImages(id, fd);
         toast({ title: 'Успешно', description: 'Товар обновлен' });
       }
       navigate('/products');
@@ -650,9 +617,6 @@ export default function ProductEditPage() {
                     />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Сохраняется как attributes.variants[0].name/value
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -689,23 +653,35 @@ export default function ProductEditPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Image Preview */}
-          {product?.image && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Изображение</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={product.image.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${product.image}` : product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Main Image Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Главное изображение</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ImageUpload
+                value={product?.image}
+                onChange={setMainImage}
+                disabled={!canEdit}
+                aspectRatio="square"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Gallery */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Галерея</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GalleryUpload
+                value={galleryFiles.filter((f): f is string => typeof f === 'string')}
+                onChange={setGalleryFiles}
+                maxImages={2}
+                disabled={!canEdit}
+              />
+            </CardContent>
+          </Card>
 
           {/* Status Toggles */}
           <Card>
