@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Save, Trash2, Plus, X } from 'lucide-react';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export default function BrandEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +37,7 @@ export default function BrandEditPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [brand, setBrand] = useState<BrandDetail | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -120,14 +122,32 @@ export default function BrandEditPage() {
 
     setIsSaving(true);
     try {
+      const fd = new FormData();
+      fd.append('name', formData.name);
+      if (formData.description) fd.append('description', formData.description);
+      if (formData.full_description) fd.append('full_description', formData.full_description);
+      if (formData.website) fd.append('website', formData.website);
+      if (formData.country) fd.append('country', formData.country);
+      if (formData.founded) fd.append('founded', formData.founded);
+      if (formData.philosophy) fd.append('philosophy', formData.philosophy);
+      fd.append('is_active', formData.is_active.toString());
+      
+      if (formData.highlights.length > 0) {
+        fd.append('highlights', JSON.stringify(formData.highlights));
+      }
+
+      if (logoFile) {
+        fd.append('logo', logoFile);
+      }
+
       if (isNew) {
-        await api.createBrand(formData);
+        await api.createBrand(fd);
         toast({
           title: 'Бренд создан',
           description: 'Бренд успешно создан',
         });
       } else if (id) {
-        await api.updateBrand(parseInt(id), formData);
+        await api.updateBrand(parseInt(id), fd);
         toast({
           title: 'Бренд обновлён',
           description: 'Изменения сохранены',
@@ -268,23 +288,19 @@ export default function BrandEditPage() {
 
           {/* Side Info */}
           <div className="space-y-6">
-            {/* Logo Preview */}
-            {!isNew && brand?.logo && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Логотип</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                    <img
-                      src={brand.logo}
-                      alt={brand.name}
-                      className="w-full h-full object-contain p-4"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Logo Upload */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Логотип</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImageUpload
+                  value={brand?.logo}
+                  onChange={setLogoFile}
+                  aspectRatio="square"
+                />
+              </CardContent>
+            </Card>
 
             {/* Details */}
             <Card>

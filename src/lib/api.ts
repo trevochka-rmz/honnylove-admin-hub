@@ -238,6 +238,50 @@ class ApiClient {
     });
   }
 
+  async createProductWithImages(formData: FormData): Promise<Product> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/products`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  async updateProductWithImages(id: string, formData: FormData): Promise<Product> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/products/${id}`, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  async getBrandsBrief(): Promise<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }> {
+    return this.request<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }>('/brands/brief', {}, false);
+  }
+
   async getProfile(): Promise<User> {
     return this.request<User>('/users/profile');
   }
@@ -257,38 +301,44 @@ class ApiClient {
     return this.request<BrandDetail>(`/brands/${id}`, {}, false);
   }
 
-  async createBrand(data: {
-    name: string;
-    description?: string;
-    website?: string;
-    is_active?: boolean;
-    full_description?: string;
-    country?: string;
-    founded?: string;
-    philosophy?: string;
-    highlights?: string[];
-  }): Promise<BrandDetail> {
-    return this.request<BrandDetail>('/brands/', {
+  async createBrand(formData: FormData): Promise<BrandDetail> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/brands/`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
-  async updateBrand(id: number, data: Partial<{
-    name: string;
-    description: string;
-    website: string;
-    is_active: boolean;
-    full_description: string;
-    country: string;
-    founded: string;
-    philosophy: string;
-    highlights: string[];
-  }>): Promise<BrandDetail> {
-    return this.request<BrandDetail>(`/brands/${id}`, {
+  async updateBrand(id: number, formData: FormData): Promise<BrandDetail> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/brands/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
   async deleteBrand(id: number): Promise<void> {
@@ -305,29 +355,44 @@ class ApiClient {
     return this.request<CategoryDetailResponse>(`/categories/${id}`, {}, false);
   }
 
-  async createCategory(data: {
-    name: string;
-    parent_id?: number;
-    description?: string;
-    is_active?: boolean;
-  }): Promise<CreateCategoryResponse> {
-    return this.request<CreateCategoryResponse>('/categories', {
+  async createCategory(formData: FormData): Promise<CreateCategoryResponse> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/categories`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
-  async updateCategory(id: number, data: Partial<{
-    name: string;
-    parent_id: number | null;
-    description: string;
-    is_active: boolean;
-    display_order: number;
-  }>): Promise<CategoryDetailResponse> {
-    return this.request<CategoryDetailResponse>(`/categories/${id}`, {
+  async updateCategory(id: number, formData: FormData): Promise<CategoryDetailResponse> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/categories/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
   async deleteCategory(id: number): Promise<void> {
@@ -350,18 +415,44 @@ class ApiClient {
     return this.request<BlogPost>(`/blogs/${id}`, {}, false);
   }
 
-  async createBlog(data: Omit<BlogPost, 'id' | 'created_at' | 'updated_at' | 'date'>): Promise<BlogPost> {
-    return this.request<BlogPost>('/blogs', {
+  async createBlog(formData: FormData): Promise<BlogPost> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/blogs/`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
-  async updateBlog(id: string, data: Partial<BlogPost>): Promise<BlogPost> {
-    return this.request<BlogPost>(`/blogs/${id}`, {
+  async updateBlog(id: string, formData: FormData): Promise<BlogPost> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/blogs/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      headers,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
   }
 
   async deleteBlog(id: string): Promise<void> {
