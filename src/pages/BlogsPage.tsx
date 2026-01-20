@@ -143,6 +143,7 @@ export default function BlogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead className="w-20">Фото</TableHead>
                     <TableHead className="min-w-[260px]">Заголовок</TableHead>
                     <TableHead>Категория</TableHead>
                     <TableHead>Автор</TableHead>
@@ -159,6 +160,21 @@ export default function BlogsPage() {
                       className="group hover:bg-muted/30 cursor-pointer"
                       onClick={() => navigate(`/blogs/${post.id}`)}
                     >
+                      <TableCell>
+                        <div className="w-14 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
+                          {post.image ? (
+                            <img
+                              src={post.image.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${post.image}` : post.image}
+                              alt={post.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              <BookOpen className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="max-w-[520px]">
                           <p className="font-medium text-foreground line-clamp-1">{post.title}</p>

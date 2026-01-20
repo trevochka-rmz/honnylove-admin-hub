@@ -545,6 +545,72 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Banners
+  async getBanners(): Promise<any[]> {
+    return this.request<any[]>('/banners', {}, false);
+  }
+
+  async createBanner(formData: FormData): Promise<any> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/banners/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  async updateBanner(id: number, formData: FormData): Promise<any> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/banners/${id}`, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  async deleteBanner(id: number): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/banners/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+  }
+
+  async getBlogTags(): Promise<string[]> {
+    return this.request<string[]>('/blogs/tags/all', {}, false);
+  }
 }
 
 

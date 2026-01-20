@@ -45,7 +45,6 @@ export default function CategoryEditPage() {
     name: '',
     description: '',
     parent_id: null as number | null,
-    display_order: 1,
     is_active: true,
   });
 
@@ -75,7 +74,6 @@ export default function CategoryEditPage() {
         name: data.name || '',
         description: data.description || '',
         parent_id: data.parent_id,
-        display_order: data.display_order || 1,
         is_active: data.is_active ?? true,
       });
     } catch (error) {
@@ -133,7 +131,6 @@ export default function CategoryEditPage() {
       fd.append('name', formData.name);
       if (formData.description) fd.append('description', formData.description);
       if (formData.parent_id) fd.append('parent_id', formData.parent_id.toString());
-      fd.append('display_order', formData.display_order.toString());
       fd.append('is_active', formData.is_active.toString());
       
       if (imageFile) {
@@ -282,16 +279,6 @@ export default function CategoryEditPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="display_order">Порядок отображения</Label>
-                <Input
-                  id="display_order"
-                  type="number"
-                  min={1}
-                  value={formData.display_order}
-                  onChange={(e) => handleChange('display_order', parseInt(e.target.value) || 1)}
-                />
-              </div>
             </CardContent>
           </Card>
 

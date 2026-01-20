@@ -98,16 +98,6 @@ export function ImageUpload({
               >
                 <Upload className="h-4 w-4" />
               </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleRemove}
-                title="Удалить изображение"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           )}
         </div>
@@ -309,23 +299,25 @@ export function GalleryUpload({
               {!disabled && !hasError && (
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="secondary"
                   size="icon"
                   className="absolute top-2 right-2 h-6 w-6"
-                  onClick={() => handleRemove(index)}
+                  onClick={() => handleReplaceClick(index)}
+                  title="Заменить"
                 >
-                  <X className="h-3 w-3" />
+                  <Upload className="h-3 w-3" />
                 </Button>
               )}
               {!disabled && hasError && (
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="secondary"
                   size="icon"
                   className="absolute top-2 right-2 h-6 w-6"
-                  onClick={() => handleRemove(index)}
+                  onClick={() => handleReplaceClick(index)}
+                  title="Загрузить"
                 >
-                  <X className="h-3 w-3" />
+                  <Upload className="h-3 w-3" />
                 </Button>
               )}
             </div>

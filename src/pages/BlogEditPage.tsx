@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +32,67 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, X } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { cn } from "@/lib/utils";
+
+const AVAILABLE_TAGS = [
+  'Уход за лицом',
+  'Красота и макияж',
+  'Уход за волосами',
+  'Уход за телом',
+  'Здоровье и добавки',
+  'Домашняя одежда и уют',
+  'Советы экспертов',
+  'Новинки и обзоры',
+];
+
+function TagSelector({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (tags: string[]) => void;
+}) {
+  const toggleTag = (tag: string) => {
+    if (value.includes(tag)) {
+      onChange(value.filter((t) => t !== tag));
+    } else {
+      onChange([...value, tag]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>Теги</Label>
+      <div className="flex flex-wrap gap-2">
+        {AVAILABLE_TAGS.map((tag) => {
+          const isSelected = value.includes(tag);
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                isSelected
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/50 text-muted-foreground border-border hover:border-primary/50"
+              )}
+            >
+              {tag}
+            </button>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Выбрано: {value.join(", ")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const blogSchema = z.object({
   title: z.string().trim().min(1, "Заголовок обязателен"),
@@ -354,11 +415,14 @@ export default function BlogEditPage() {
                           <p className="text-sm text-destructive">{form.formState.errors.read_time.message}</p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tagsText">Теги (через запятую)</Label>
-                        <Input id="tagsText" {...form.register("tagsText")} placeholder="уход, советы" />
-                      </div>
                     </div>
+
+                    <TagSelector
+                      value={watched.tagsText
+                        ? watched.tagsText.split(",").map((t) => t.trim()).filter(Boolean)
+                        : []}
+                      onChange={(tags) => form.setValue("tagsText", tags.join(", "))}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
