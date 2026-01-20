@@ -13,6 +13,7 @@ import {
   BookOpen,
   ShoppingCart,
   Users,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -28,6 +29,7 @@ const navItems = [
   { to: '/brands', icon: Award, label: 'Бренды' },
   { to: '/categories', icon: FolderTree, label: 'Категории' },
   { to: '/blogs', icon: BookOpen, label: 'Блоги' },
+  { to: '/banners', icon: ImageIcon, label: 'Баннеры' },
 ];
 
 export function AdminSidebar() {

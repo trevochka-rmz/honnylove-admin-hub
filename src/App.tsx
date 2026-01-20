@@ -16,6 +16,8 @@ import BrandsPage from "@/pages/BrandsPage";
 import BrandEditPage from "@/pages/BrandEditPage";
 import BlogsPage from "@/pages/BlogsPage";
 import BlogEditPage from "@/pages/BlogEditPage";
+import BannersPage from "@/pages/BannersPage";
+import BannerEditPage from "@/pages/BannerEditPage";
 import ProfilePage from "@/pages/ProfilePage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderCreatePage from "@/pages/OrderCreatePage";
@@ -57,6 +59,8 @@ const App = () => (
               <Route path="brands/:id" element={<BrandEditPage />} />
               <Route path="blogs" element={<BlogsPage />} />
               <Route path="blogs/:id" element={<BlogEditPage />} />
+              <Route path="banners" element={<BannersPage />} />
+              <Route path="banners/:id" element={<BannerEditPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
