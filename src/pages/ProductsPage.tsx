@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Product, Brand, Category, ProductFilters } from '@/types';
@@ -36,8 +36,10 @@ import { cn } from '@/lib/utils';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -48,15 +50,31 @@ export default function ProductsPage() {
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
 
-  const [filters, setFilters] = useState<ProductFilters>({
-    page: 1,
-    limit: 50,
-  });
+  // Initialize filters from URL params
+  const getInitialFilters = useCallback((): ProductFilters => {
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const sort = searchParams.get('sort') || undefined;
+    return {
+      page: isNaN(page) ? 1 : page,
+      limit: 50,
+      sort: sort as ProductFilters['sort'],
+    };
+  }, [searchParams]);
+
+  const [filters, setFilters] = useState<ProductFilters>(getInitialFilters);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+
+  // Sync filters to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filters.page && filters.page > 1) params.set('page', filters.page.toString());
+    if (filters.sort) params.set('sort', filters.sort);
+    setSearchParams(params, { replace: true });
+  }, [filters, setSearchParams]);
 
   useEffect(() => {
     Promise.all([api.getBrands(), api.getCategories()]).then(([brandsRes, categoriesRes]) => {
@@ -103,6 +121,11 @@ export default function ProductsPage() {
       // Но при пагинации page должен меняться корректно.
       if (key !== 'page') {
         next.page = 1;
+      }
+
+      // Scroll to top when changing page
+      if (key === 'page') {
+        tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       return next;
@@ -213,7 +236,7 @@ export default function ProductsPage() {
       </Card>
 
       {/* Products Table */}
-      <Card>
+      <Card ref={tableRef}>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
