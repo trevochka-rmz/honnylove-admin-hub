@@ -225,6 +225,15 @@ export default function ProductEditPage() {
     return findCat(categories) || 'Выберите категорию';
   };
 
+  // Store original data for comparison (to detect changes)
+  const [originalData, setOriginalData] = useState<typeof formData | null>(null);
+
+  useEffect(() => {
+    if (product && !originalData) {
+      setOriginalData({ ...formData });
+    }
+  }, [product, formData, originalData]);
+
   const handleSave = async () => {
     if (!isAdmin) {
       toast({
@@ -246,59 +255,153 @@ export default function ProductEditPage() {
 
     setIsSaving(true);
     try {
-      const fd = new FormData();
-      
-      // Required fields
-      fd.append('name', formData.name);
-      fd.append('purchase_price', formData.purchasePrice || '0');
-      fd.append('retail_price', formData.price || '0');
-      fd.append('brand_id', formData.brand_id || '1');
-      fd.append('category_id', formData.category_id || '1');
-      fd.append('product_type', formData.product_type);
-
-      // Optional fields
-      if (formData.description) fd.append('description', formData.description);
-      if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
-      if (formData.target_audience) fd.append('target_audience', formData.target_audience);
-      if (formData.skin_type) fd.append('skin_type', formData.skin_type);
-      if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
-      if (formData.meta_title) fd.append('meta_title', formData.meta_title);
-      if (formData.meta_description) fd.append('meta_description', formData.meta_description);
-
-      fd.append('is_new', formData.isNew.toString());
-      fd.append('is_bestseller', formData.isBestseller.toString());
-      fd.append('is_featured', formData.isFeatured.toString());
-
-      // Attributes - always send as object
-      const attributes: Record<string, any> = {
-        ingredients: formData.ingredients || '',
-        usage: formData.usage || '',
-        variants: formData.variant_name || formData.variant_value
-          ? [{
-              name: formData.variant_name || 'Объём',
-              value: formData.variant_value || '',
-            }]
-          : [],
-      };
-      fd.append('attributes', JSON.stringify(attributes));
-
-      // Images
-      if (mainImage) {
-        fd.append('mainImage', mainImage);
-      }
-
-      // Gallery
-      const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
-      galleryFilesOnly.forEach((file) => {
-        fd.append('gallery[]', file);
-      });
-
       if (isNew) {
+        // For new products, send all fields
+        const fd = new FormData();
+        fd.append('name', formData.name);
+        fd.append('purchase_price', formData.purchasePrice || '0');
+        fd.append('retail_price', formData.price || '0');
+        fd.append('brand_id', formData.brand_id || '1');
+        fd.append('category_id', formData.category_id || '1');
+        fd.append('product_type', formData.product_type);
+        if (formData.description) fd.append('description', formData.description);
+        if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
+        if (formData.target_audience) fd.append('target_audience', formData.target_audience);
+        if (formData.skin_type) fd.append('skin_type', formData.skin_type);
+        if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
+        if (formData.meta_title) fd.append('meta_title', formData.meta_title);
+        if (formData.meta_description) fd.append('meta_description', formData.meta_description);
+        fd.append('is_new', formData.isNew.toString());
+        fd.append('is_bestseller', formData.isBestseller.toString());
+        fd.append('is_featured', formData.isFeatured.toString());
+        
+        const attributes: Record<string, any> = {
+          ingredients: formData.ingredients || '',
+          usage: formData.usage || '',
+          variants: formData.variant_name || formData.variant_value
+            ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
+            : [],
+        };
+        fd.append('attributes', JSON.stringify(attributes));
+        
+        if (mainImage) fd.append('mainImage', mainImage);
+        const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
+        galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
+        
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
-        await api.updateProductWithImages(id, fd);
-        toast({ title: 'Успешно', description: 'Товар обновлен' });
+        // For updates, only send changed fields
+        const fd = new FormData();
+        let hasChanges = false;
+        
+        // Check basic fields for changes
+        if (formData.name !== originalData?.name) {
+          fd.append('name', formData.name);
+          hasChanges = true;
+        }
+        if (formData.description !== originalData?.description) {
+          fd.append('description', formData.description);
+          hasChanges = true;
+        }
+        if (formData.purchasePrice !== originalData?.purchasePrice) {
+          fd.append('purchase_price', formData.purchasePrice || '0');
+          hasChanges = true;
+        }
+        if (formData.price !== originalData?.price) {
+          fd.append('retail_price', formData.price || '0');
+          hasChanges = true;
+        }
+        if (formData.discountPrice !== originalData?.discountPrice) {
+          fd.append('discount_price', formData.discountPrice || '');
+          hasChanges = true;
+        }
+        if (formData.brand_id !== originalData?.brand_id) {
+          fd.append('brand_id', formData.brand_id);
+          hasChanges = true;
+        }
+        if (formData.category_id !== originalData?.category_id) {
+          fd.append('category_id', formData.category_id);
+          hasChanges = true;
+        }
+        if (formData.product_type !== originalData?.product_type) {
+          fd.append('product_type', formData.product_type);
+          hasChanges = true;
+        }
+        if (formData.target_audience !== originalData?.target_audience) {
+          fd.append('target_audience', formData.target_audience);
+          hasChanges = true;
+        }
+        if (formData.skin_type !== originalData?.skin_type) {
+          fd.append('skin_type', formData.skin_type);
+          hasChanges = true;
+        }
+        if (formData.stockQuantity !== originalData?.stockQuantity) {
+          fd.append('stockQuantity', formData.stockQuantity);
+          hasChanges = true;
+        }
+        if (formData.meta_title !== originalData?.meta_title) {
+          fd.append('meta_title', formData.meta_title);
+          hasChanges = true;
+        }
+        if (formData.meta_description !== originalData?.meta_description) {
+          fd.append('meta_description', formData.meta_description);
+          hasChanges = true;
+        }
+        if (formData.isNew !== originalData?.isNew) {
+          fd.append('is_new', formData.isNew.toString());
+          hasChanges = true;
+        }
+        if (formData.isBestseller !== originalData?.isBestseller) {
+          fd.append('is_bestseller', formData.isBestseller.toString());
+          hasChanges = true;
+        }
+        if (formData.isFeatured !== originalData?.isFeatured) {
+          fd.append('is_featured', formData.isFeatured.toString());
+          hasChanges = true;
+        }
+
+        // Check attributes for changes - only send if any attribute changed
+        const attributesChanged = 
+          formData.ingredients !== originalData?.ingredients ||
+          formData.usage !== originalData?.usage ||
+          formData.variant_name !== originalData?.variant_name ||
+          formData.variant_value !== originalData?.variant_value;
+
+        if (attributesChanged) {
+          const attributes: Record<string, any> = {};
+          if (formData.ingredients !== originalData?.ingredients) {
+            attributes.ingredients = formData.ingredients;
+          }
+          if (formData.usage !== originalData?.usage) {
+            attributes.usage = formData.usage;
+          }
+          if (formData.variant_name !== originalData?.variant_name || formData.variant_value !== originalData?.variant_value) {
+            attributes.variants = formData.variant_name || formData.variant_value
+              ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
+              : [];
+          }
+          fd.append('attributes', JSON.stringify(attributes));
+          hasChanges = true;
+        }
+
+        // Images always trigger update if added
+        if (mainImage) {
+          fd.append('mainImage', mainImage);
+          hasChanges = true;
+        }
+        const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
+        if (galleryFilesOnly.length > 0) {
+          galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
+          hasChanges = true;
+        }
+
+        if (hasChanges) {
+          await api.updateProductWithImages(id, fd);
+          toast({ title: 'Успешно', description: 'Товар обновлен' });
+        } else {
+          toast({ title: 'Информация', description: 'Нет изменений для сохранения' });
+        }
       }
       navigate('/products');
     } catch (error) {
