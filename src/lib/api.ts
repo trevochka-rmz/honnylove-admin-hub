@@ -233,9 +233,20 @@ class ApiClient {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    return this.request<void>(`/products/${id}`, {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/products/${id}`, {
       method: 'DELETE',
+      headers,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
   }
 
   async createProductWithImages(formData: FormData): Promise<Product> {
@@ -342,9 +353,20 @@ class ApiClient {
   }
 
   async deleteBrand(id: number): Promise<void> {
-    return this.request<void>(`/brands/${id}`, {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/brands/${id}`, {
       method: 'DELETE',
+      headers,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
   }
 
   async getCategories(): Promise<CategoriesResponse> {
@@ -396,9 +418,20 @@ class ApiClient {
   }
 
   async deleteCategory(id: number): Promise<void> {
-    return this.request<void>(`/categories/${id}`, {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/categories/${id}`, {
       method: 'DELETE',
+      headers,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
   }
 
   async getBlogs(params: { limit?: number; page?: number; search?: string } = {}): Promise<BlogsResponse> {
@@ -456,9 +489,20 @@ class ApiClient {
   }
 
   async deleteBlog(id: string): Promise<void> {
-    return this.request<void>(`/blogs/${id}`, {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE}/blogs/${id}`, {
       method: 'DELETE',
+      headers,
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
   }
 
   async getUsers(): Promise<User[]> {
