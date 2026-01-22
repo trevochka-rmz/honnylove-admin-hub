@@ -230,9 +230,10 @@ export default function BlogEditPage() {
       fd.append('author', values.author);
       fd.append('read_time', values.read_time.toString());
       
-      if (tags.length > 0) {
-        fd.append('tags', JSON.stringify(tags));
-      }
+      // Send tags as individual array items for proper parsing
+      tags.forEach((tag) => {
+        fd.append('tags[]', tag);
+      });
 
       if (imageFile) {
         fd.append('image', imageFile);

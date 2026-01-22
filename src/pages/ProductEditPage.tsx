@@ -269,19 +269,18 @@ export default function ProductEditPage() {
       fd.append('is_bestseller', formData.isBestseller.toString());
       fd.append('is_featured', formData.isFeatured.toString());
 
-      // Attributes
-      const attributes: Record<string, any> = {};
-      if (formData.ingredients) attributes.ingredients = formData.ingredients;
-      if (formData.usage) attributes.usage = formData.usage;
-      if (formData.variant_name || formData.variant_value) {
-        attributes.variants = [{
-          name: formData.variant_name || 'Объём',
-          value: formData.variant_value,
-        }];
-      }
-      if (Object.keys(attributes).length > 0) {
-        fd.append('attributes', JSON.stringify(attributes));
-      }
+      // Attributes - always send as object
+      const attributes: Record<string, any> = {
+        ingredients: formData.ingredients || '',
+        usage: formData.usage || '',
+        variants: formData.variant_name || formData.variant_value
+          ? [{
+              name: formData.variant_name || 'Объём',
+              value: formData.variant_value || '',
+            }]
+          : [],
+      };
+      fd.append('attributes', JSON.stringify(attributes));
 
       // Images
       if (mainImage) {
