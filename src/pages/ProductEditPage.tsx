@@ -282,7 +282,7 @@ export default function ProductEditPage() {
             ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
             : [],
         };
-        fd.append('attributes', JSON.stringify(attributes));
+        fd.append('attributes', new Blob([JSON.stringify(attributes)], { type: 'application/json' }));
         
         if (mainImage) fd.append('mainImage', mainImage);
         const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
@@ -381,7 +381,8 @@ export default function ProductEditPage() {
               ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
               : [];
           }
-          fd.append('attributes', JSON.stringify(attributes));
+          // Send attributes as a blob with application/json type so server parses it as object
+          fd.append('attributes', new Blob([JSON.stringify(attributes)], { type: 'application/json' }));
           hasChanges = true;
         }
 
