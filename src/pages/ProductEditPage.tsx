@@ -291,74 +291,60 @@ export default function ProductEditPage() {
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
-        // For updates, only send changed fields
-        const fd = new FormData();
-        let hasChanges = false;
+        // Update existing product - only send changed fields
+        const hasNewImages = mainImage || galleryFiles.some((f) => f instanceof File);
         
-        // Check basic fields for changes
+        // Build the update payload with only changed fields
+        const updatePayload: Record<string, any> = {};
+        
+        // Compare each field with original and only add if changed
         if (formData.name !== originalData?.name) {
-          fd.append('name', formData.name);
-          hasChanges = true;
+          updatePayload.name = formData.name;
         }
         if (formData.description !== originalData?.description) {
-          fd.append('description', formData.description);
-          hasChanges = true;
+          updatePayload.description = formData.description;
         }
         if (formData.purchasePrice !== originalData?.purchasePrice) {
-          fd.append('purchase_price', formData.purchasePrice || '0');
-          hasChanges = true;
+          updatePayload.purchase_price = formData.purchasePrice || '0';
         }
         if (formData.price !== originalData?.price) {
-          fd.append('retail_price', formData.price || '0');
-          hasChanges = true;
+          updatePayload.retail_price = formData.price || '0';
         }
         if (formData.discountPrice !== originalData?.discountPrice) {
-          fd.append('discount_price', formData.discountPrice || '');
-          hasChanges = true;
+          updatePayload.discount_price = formData.discountPrice || '';
         }
         if (formData.brand_id !== originalData?.brand_id) {
-          fd.append('brand_id', formData.brand_id);
-          hasChanges = true;
+          updatePayload.brand_id = formData.brand_id;
         }
         if (formData.category_id !== originalData?.category_id) {
-          fd.append('category_id', formData.category_id);
-          hasChanges = true;
+          updatePayload.category_id = formData.category_id;
         }
         if (formData.product_type !== originalData?.product_type) {
-          fd.append('product_type', formData.product_type);
-          hasChanges = true;
+          updatePayload.product_type = formData.product_type;
         }
         if (formData.target_audience !== originalData?.target_audience) {
-          fd.append('target_audience', formData.target_audience);
-          hasChanges = true;
+          updatePayload.target_audience = formData.target_audience;
         }
         if (formData.skin_type !== originalData?.skin_type) {
-          fd.append('skin_type', formData.skin_type);
-          hasChanges = true;
+          updatePayload.skin_type = formData.skin_type;
         }
         if (formData.stockQuantity !== originalData?.stockQuantity) {
-          fd.append('stockQuantity', formData.stockQuantity);
-          hasChanges = true;
+          updatePayload.stockQuantity = formData.stockQuantity;
         }
         if (formData.meta_title !== originalData?.meta_title) {
-          fd.append('meta_title', formData.meta_title);
-          hasChanges = true;
+          updatePayload.meta_title = formData.meta_title;
         }
         if (formData.meta_description !== originalData?.meta_description) {
-          fd.append('meta_description', formData.meta_description);
-          hasChanges = true;
+          updatePayload.meta_description = formData.meta_description;
         }
         if (formData.isNew !== originalData?.isNew) {
-          fd.append('is_new', formData.isNew.toString());
-          hasChanges = true;
+          updatePayload.is_new = formData.isNew;
         }
         if (formData.isBestseller !== originalData?.isBestseller) {
-          fd.append('is_bestseller', formData.isBestseller.toString());
-          hasChanges = true;
+          updatePayload.is_bestseller = formData.isBestseller;
         }
         if (formData.isFeatured !== originalData?.isFeatured) {
-          fd.append('is_featured', formData.isFeatured.toString());
-          hasChanges = true;
+          updatePayload.is_featured = formData.isFeatured;
         }
 
         // Check attributes for changes - only send if any attribute changed
@@ -381,30 +367,45 @@ export default function ProductEditPage() {
               ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
               : [];
           }
-          // Send attributes as a blob with application/json type so server parses it as object
-          fd.append('attributes', new Blob([JSON.stringify(attributes)], { type: 'application/json' }));
-          hasChanges = true;
+          updatePayload.attributes = attributes;
         }
 
-        // Images always trigger update if added
-        if (mainImage) {
-          fd.append('mainImage', mainImage);
-          hasChanges = true;
-        }
-        const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
-        if (galleryFilesOnly.length > 0) {
-          galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
-          hasChanges = true;
-        }
+        const hasFieldChanges = Object.keys(updatePayload).length > 0;
 
-        if (hasChanges) {
+        if (hasNewImages) {
+          // Use FormData for image uploads
+          const fd = new FormData();
+          
+          // Add all changed fields to FormData
+          for (const [key, value] of Object.entries(updatePayload)) {
+            if (key === 'attributes') {
+              fd.append('attributes', new Blob([JSON.stringify(value)], { type: 'application/json' }));
+            } else if (typeof value === 'boolean') {
+              fd.append(key, value.toString());
+            } else {
+              fd.append(key, String(value));
+            }
+          }
+          
+          if (mainImage) {
+            fd.append('mainImage', mainImage);
+          }
+          const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
+          if (galleryFilesOnly.length > 0) {
+            galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
+          }
+          
           await api.updateProductWithImages(id, fd);
+          toast({ title: 'Успешно', description: 'Товар обновлен' });
+        } else if (hasFieldChanges) {
+          // Use regular JSON request for non-image updates
+          await api.updateProduct(id, updatePayload);
           toast({ title: 'Успешно', description: 'Товар обновлен' });
         } else {
           toast({ title: 'Информация', description: 'Нет изменений для сохранения' });
         }
       }
-      navigate('/products');
+      navigate(-1);
     } catch (error) {
       toast({
         title: 'Ошибка',
@@ -421,7 +422,7 @@ export default function ProductEditPage() {
     try {
       await api.deleteProduct(id);
       toast({ title: 'Удалено', description: 'Товар удалён' });
-      navigate('/products');
+      navigate(-1);
     } catch (error) {
       toast({
         title: 'Ошибка',
@@ -445,7 +446,7 @@ export default function ProductEditPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/products')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
