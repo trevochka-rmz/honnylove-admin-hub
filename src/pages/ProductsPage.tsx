@@ -31,6 +31,8 @@ import {
   ChevronRight,
   Loader2,
   Package,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -179,6 +181,48 @@ export default function ProductsPage() {
     filters.isBestseller ||
     filters.sort;
 
+  const handleExportCSV = async () => {
+    try {
+      const blob = await api.exportProductsCSV();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: 'Успешно', description: 'CSV файл скачан' });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось экспортировать CSV',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const blob = await api.exportProductsPDF();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: 'Успешно', description: 'PDF файл скачан' });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось экспортировать PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -192,12 +236,22 @@ export default function ProductsPage() {
             )}
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => navigate('/products/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить товар
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            CSV
           </Button>
-        )}
+          <Button variant="outline" onClick={handleExportPDF}>
+            <FileText className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
+          {isAdmin && (
+            <Button onClick={() => navigate('/products/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить товар
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search & Sort */}

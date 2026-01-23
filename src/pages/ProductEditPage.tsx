@@ -286,7 +286,7 @@ export default function ProductEditPage() {
         
         if (mainImage) fd.append('mainImage', mainImage);
         const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
-        galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
+        galleryFilesOnly.forEach((file) => fd.append('gallery', file));
         
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
@@ -392,7 +392,7 @@ export default function ProductEditPage() {
           }
           const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
           if (galleryFilesOnly.length > 0) {
-            galleryFilesOnly.forEach((file) => fd.append('gallery[]', file));
+            galleryFilesOnly.forEach((file) => fd.append('gallery', file));
           }
           
           await api.updateProductWithImages(id, fd);
