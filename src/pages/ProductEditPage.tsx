@@ -256,7 +256,7 @@ export default function ProductEditPage() {
     setIsSaving(true);
     try {
       if (isNew) {
-        // For new products, send all fields
+        // For new products, send all fields via FormData
         const fd = new FormData();
         fd.append('name', formData.name);
         fd.append('purchase_price', formData.purchasePrice || '0');
@@ -275,18 +275,24 @@ export default function ProductEditPage() {
         fd.append('is_bestseller', formData.isBestseller.toString());
         fd.append('is_featured', formData.isFeatured.toString());
         
-        const attributes: Record<string, any> = {
-          ingredients: formData.ingredients || '',
-          usage: formData.usage || '',
-          variants: formData.variant_name || formData.variant_value
-            ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
-            : [],
-        };
-        fd.append('attributes', new Blob([JSON.stringify(attributes)], { type: 'application/json' }));
+        // Build attributes object
+        const attributes: Record<string, any> = {};
+        if (formData.ingredients) attributes.ingredients = formData.ingredients;
+        if (formData.usage) attributes.usage = formData.usage;
+        if (formData.variant_name || formData.variant_value) {
+          attributes.variants = [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }];
+        }
+        // Only append attributes if not empty
+        if (Object.keys(attributes).length > 0) {
+          fd.append('attributes', JSON.stringify(attributes));
+        }
         
+        // Only append images if they exist
         if (mainImage) fd.append('mainImage', mainImage);
         const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
-        galleryFilesOnly.forEach((file) => fd.append('gallery', file));
+        if (galleryFilesOnly.length > 0) {
+          galleryFilesOnly.forEach((file) => fd.append('gallery', file));
+        }
         
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
@@ -379,7 +385,7 @@ export default function ProductEditPage() {
           // Add all changed fields to FormData
           for (const [key, value] of Object.entries(updatePayload)) {
             if (key === 'attributes') {
-              fd.append('attributes', new Blob([JSON.stringify(value)], { type: 'application/json' }));
+              fd.append('attributes', JSON.stringify(value));
             } else if (typeof value === 'boolean') {
               fd.append(key, value.toString());
             } else {
