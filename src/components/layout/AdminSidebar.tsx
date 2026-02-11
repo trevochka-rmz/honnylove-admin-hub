@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Users,
   Image as ImageIcon,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Главная' },
   { to: '/products', icon: Package, label: 'Товары' },
   { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
+  { to: '/pos', icon: Receipt, label: 'Касса' },
   { to: '/users', icon: Users, label: 'Пользователи' },
   { to: '/brands', icon: Award, label: 'Бренды' },
   { to: '/categories', icon: FolderTree, label: 'Категории' },

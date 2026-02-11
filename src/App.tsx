@@ -24,6 +24,7 @@ import OrderCreatePage from "@/pages/OrderCreatePage";
 import OrderEditPage from "@/pages/OrderEditPage";
 import UsersPage from "@/pages/UsersPage";
 import UserEditPage from "@/pages/UserEditPage";
+import PosPage from "@/pages/PosPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="blogs/:id" element={<BlogEditPage />} />
               <Route path="banners" element={<BannersPage />} />
               <Route path="banners/:id" element={<BannerEditPage />} />
+              <Route path="pos" element={<PosPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
