@@ -693,6 +693,91 @@ class ApiClient {
   async getBlogTags(): Promise<string[]> {
     return this.request<string[]>('/blogs/tags/all', {}, false);
   }
+
+  // POS
+  async posPreview(productIds: number[]): Promise<any> {
+    return this.request<any>('/pos/preview', {
+      method: 'POST',
+      body: JSON.stringify({ product_ids: productIds }),
+    });
+  }
+
+  async posCheckout(data: {
+    items: { product_id: number; quantity: number }[];
+    payment_method: string;
+    customer_name?: string;
+    customer_phone?: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.request<any>('/pos/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async posGetOrders(filters: {
+    status?: string;
+    payment_method?: string;
+    created_by?: number;
+    date_from?: string;
+    date_to?: string;
+    today_only?: boolean;
+    this_week?: boolean;
+    this_month?: boolean;
+    search?: string;
+    is_pos_order?: boolean;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.payment_method) params.append('payment_method', filters.payment_method);
+    if (filters.created_by) params.append('created_by', filters.created_by.toString());
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    if (filters.today_only) params.append('today_only', 'true');
+    if (filters.this_week) params.append('this_week', 'true');
+    if (filters.this_month) params.append('this_month', 'true');
+    if (filters.search) params.append('search', filters.search);
+    if (filters.is_pos_order) params.append('is_pos_order', 'true');
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    const query = params.toString();
+    return this.request<any>(`/pos/orders${query ? `?${query}` : ''}`);
+  }
+
+  async posGetStatistics(filters: {
+    date_from?: string;
+    date_to?: string;
+    today_only?: boolean;
+    this_week?: boolean;
+    this_month?: boolean;
+    cashier_id?: number;
+    is_pos_order?: boolean;
+  } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    if (filters.today_only) params.append('today_only', 'true');
+    if (filters.this_week) params.append('this_week', 'true');
+    if (filters.this_month) params.append('this_month', 'true');
+    if (filters.cashier_id) params.append('cashier_id', filters.cashier_id.toString());
+    if (filters.is_pos_order) params.append('is_pos_order', 'true');
+    const query = params.toString();
+    return this.request<any>(`/pos/statistics${query ? `?${query}` : ''}`);
+  }
+
+  async posToday(): Promise<any> {
+    return this.request<any>('/pos/today');
+  }
+
+  async posThisWeek(): Promise<any> {
+    return this.request<any>('/pos/this-week');
+  }
+
+  async posThisMonth(): Promise<any> {
+    return this.request<any>('/pos/this-month');
+  }
 }
 
 
