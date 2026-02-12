@@ -783,6 +783,25 @@ class ApiClient {
   async posGetCashiers(): Promise<any> {
     return this.request<any>('/pos/cashiers');
   }
+
+  async posUpdateOrder(orderId: number, data: {
+    payment_method?: string;
+    discount_amount?: number;
+    customer_name?: string;
+    customer_phone?: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.request<any>(`/pos/orders/${orderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async posDeleteOrder(orderId: number): Promise<any> {
+    return this.request<any>(`/pos/orders/${orderId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 
