@@ -85,14 +85,8 @@ export default function PosCheckout() {
     const search = async () => {
       setIsSearching(true);
       try {
-        const res = await api.getProducts({ limit: 10, page: 1 });
-        const filtered = res.products.filter(
-          (p) =>
-            p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            p.brand?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            p.sku?.toLowerCase().includes(debouncedSearch.toLowerCase())
-        );
-        setSearchResults(filtered.slice(0, 10));
+        const res = await api.getProducts({ limit: 10, page: 1, search: debouncedSearch });
+        setSearchResults(res.products || []);
       } catch {
         // ignore
       } finally {

@@ -196,6 +196,7 @@ class ApiClient {
     if (filters.isBestseller) params.append('isBestseller', 'true');
     if (filters.isOnSale) params.append('isOnSale', 'true');
     if (filters.sort) params.append('sort', filters.sort);
+    if (filters.search) params.append('search', filters.search);
 
     const query = params.toString();
     return this.request<ProductsResponse>(`/products/admin/all${query ? `?${query}` : ''}`);
@@ -777,6 +778,10 @@ class ApiClient {
 
   async posThisMonth(): Promise<any> {
     return this.request<any>('/pos/this-month');
+  }
+
+  async posGetCashiers(): Promise<any> {
+    return this.request<any>('/pos/cashiers');
   }
 }
 

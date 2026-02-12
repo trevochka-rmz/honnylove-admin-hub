@@ -277,6 +277,7 @@ export interface ProductFilters {
   sort?: 'popularity' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export interface BlogPost {
