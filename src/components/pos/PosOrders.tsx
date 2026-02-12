@@ -62,16 +62,24 @@ export default function PosOrders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState('today');
+  const [cashierFilter, setCashierFilter] = useState('');
+  const [cashiers, setCashiers] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [page, setPage] = useState(1);
+
+  // Load cashiers
+  useEffect(() => {
+    api.posGetCashiers().then((res) => setCashiers(res.cashiers || [])).catch(() => {});
+  }, []);
 
   const loadOrders = async () => {
     setIsLoading(true);
     try {
       const filters: any = { page, limit: 50 };
       if (debouncedSearch) filters.search = debouncedSearch;
-      if (statusFilter) filters.status = statusFilter;
-      if (paymentFilter) filters.payment_method = paymentFilter;
+      if (statusFilter && statusFilter !== 'all') filters.status = statusFilter;
+      if (paymentFilter && paymentFilter !== 'all') filters.payment_method = paymentFilter;
+      if (cashierFilter && cashierFilter !== 'all') filters.created_by = Number(cashierFilter);
       if (periodFilter === 'today') filters.today_only = true;
       else if (periodFilter === 'week') filters.this_week = true;
       else if (periodFilter === 'month') filters.this_month = true;
@@ -88,11 +96,11 @@ export default function PosOrders() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter, paymentFilter, periodFilter]);
+  }, [debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter]);
 
   useEffect(() => {
     loadOrders();
-  }, [page, debouncedSearch, statusFilter, paymentFilter, periodFilter]);
+  }, [page, debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter]);
 
   return (
     <div className="space-y-4 mt-4">
@@ -140,6 +148,19 @@ export default function PosOrders() {
                 <SelectItem value="all">Все способы</SelectItem>
                 <SelectItem value="cash">Наличные</SelectItem>
                 <SelectItem value="card">Карта</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={cashierFilter} onValueChange={setCashierFilter}>
+              <SelectTrigger className="w-full lg:w-44">
+                <SelectValue placeholder="Кассир" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все кассиры</SelectItem>
+                {cashiers.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.first_name ? `${c.first_name} ${c.last_name || ''}`.trim() : c.email}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -228,7 +249,7 @@ export default function PosOrders() {
 
       {/* Order detail dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Чек #{selectedOrder?.id}</DialogTitle>
             <DialogDescription>
