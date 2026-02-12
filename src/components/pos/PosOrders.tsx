@@ -29,12 +29,26 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Search,
   Loader2,
   ChevronLeft,
   ChevronRight,
   Receipt,
-  Calendar,
+  Pencil,
+  Trash2,
+  Save,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -52,6 +66,9 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Отменён',
 };
 
+const EDITABLE_STATUSES = ['pending', 'paid', 'completed'];
+const DELETABLE_STATUSES = ['pending', 'cancelled'];
+
 export default function PosOrders() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
@@ -67,7 +84,21 @@ export default function PosOrders() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [page, setPage] = useState(1);
 
-  // Load cashiers
+  // Edit state
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    payment_method: '',
+    discount_amount: '',
+    customer_name: '',
+    customer_phone: '',
+    notes: '',
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Delete state
+  const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     api.posGetCashiers().then((res) => setCashiers(res.cashiers || [])).catch(() => {});
   }, []);
@@ -101,6 +132,69 @@ export default function PosOrders() {
   useEffect(() => {
     loadOrders();
   }, [page, debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter]);
+
+  // Parse notes to extract customer info
+  const parseNotes = (notes: string) => {
+    const result = { customer_name: '', customer_phone: '', notes: '' };
+    if (!notes) return result;
+    // Format: "[POS] | Клиент: Name | Тел: Phone | Extra notes"
+    const parts = notes.split(' | ');
+    for (const part of parts) {
+      if (part.startsWith('Клиент: ')) result.customer_name = part.replace('Клиент: ', '');
+      else if (part.startsWith('Тел: ')) result.customer_phone = part.replace('Тел: ', '');
+      else if (part !== '[POS]') result.notes = part;
+    }
+    return result;
+  };
+
+  const openEdit = (order: any) => {
+    const parsed = parseNotes(order.notes || '');
+    setEditForm({
+      payment_method: order.payment_method || 'cash',
+      discount_amount: order.discount_amount ? String(Number(order.discount_amount)) : '0',
+      customer_name: parsed.customer_name,
+      customer_phone: parsed.customer_phone,
+      notes: parsed.notes,
+    });
+    setEditingOrder(order);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingOrder) return;
+    setIsSaving(true);
+    try {
+      await api.posUpdateOrder(editingOrder.id, {
+        payment_method: editForm.payment_method,
+        discount_amount: Number(editForm.discount_amount) || 0,
+        customer_name: editForm.customer_name || undefined,
+        customer_phone: editForm.customer_phone || undefined,
+        notes: editForm.notes || undefined,
+      });
+      toast({ title: 'Успешно', description: 'Чек обновлён' });
+      setEditingOrder(null);
+      loadOrders();
+    } catch (error: any) {
+      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingOrderId) return;
+    setIsDeleting(true);
+    try {
+      await api.posDeleteOrder(deletingOrderId);
+      toast({ title: 'Успешно', description: 'Чек удалён' });
+      setDeletingOrderId(null);
+      setSelectedOrder(null);
+      loadOrders();
+    } catch (error: any) {
+      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-4 mt-4">
@@ -273,6 +367,14 @@ export default function PosOrders() {
                     {statusLabels[selectedOrder.status] || selectedOrder.status}
                   </Badge>
                 </div>
+                {selectedOrder.discount_amount && Number(selectedOrder.discount_amount) > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Скидка:</span>
+                    <p className="font-medium text-destructive">
+                      -{Number(selectedOrder.discount_amount).toLocaleString('ru-RU')} ₽
+                    </p>
+                  </div>
+                )}
               </div>
 
               {selectedOrder.items && selectedOrder.items.length > 0 && (
@@ -296,10 +398,129 @@ export default function PosOrders() {
                 <span>Итого:</span>
                 <span className="text-primary">{Number(selectedOrder.total_amount).toLocaleString('ru-RU')} ₽</span>
               </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-2 border-t">
+                {EDITABLE_STATUSES.includes(selectedOrder.status) && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(selectedOrder);
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Редактировать
+                  </Button>
+                )}
+                {DELETABLE_STATUSES.includes(selectedOrder.status) && (
+                  <Button
+                    variant="destructive"
+                    className="flex-1 gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingOrderId(selectedOrder.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editingOrder} onOpenChange={() => setEditingOrder(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактировать чек #{editingOrder?.id}</DialogTitle>
+            <DialogDescription>Измените данные чека</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Способ оплаты</Label>
+              <Select value={editForm.payment_method} onValueChange={(v) => setEditForm((f) => ({ ...f, payment_method: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Наличные</SelectItem>
+                  <SelectItem value="card">Карта</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Скидка (₽)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={editForm.discount_amount}
+                onChange={(e) => setEditForm((f) => ({ ...f, discount_amount: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Имя клиента</Label>
+              <Input
+                value={editForm.customer_name}
+                onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))}
+                placeholder="Необязательно"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Телефон клиента</Label>
+              <Input
+                value={editForm.customer_phone}
+                onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))}
+                placeholder="Необязательно"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Заметки</Label>
+              <Textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Необязательно"
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditingOrder(null)}>Отмена</Button>
+              <Button onClick={handleSaveEdit} disabled={isSaving} className="gap-2">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Сохранить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingOrderId} onOpenChange={() => setDeletingOrderId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить чек #{deletingOrderId}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие необратимо. Товары будут возвращены на склад.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
