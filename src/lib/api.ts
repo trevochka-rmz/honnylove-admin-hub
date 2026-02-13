@@ -3,107 +3,23 @@ import type { AuthResponse, ProductsResponse, Product, BrandsResponse, Categorie
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 class ApiClient {
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
   private refreshInFlight: Promise<boolean> | null = null;
-  private autoRefreshIntervalId: number | null = null;
 
-  private getCookie(name: string): string | null {
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
-    return match ? decodeURIComponent(match[1]) : null;
-  }
-
-  private setCookie(name: string, value: string, days = 30) {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  constructor() {
+    // Tokens managed by browser via HttpOnly cookies
   }
 
   private removeCookie(name: string) {
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
   }
 
-  constructor() {
-    this.accessToken = this.getCookie('accessToken');
-    this.refreshToken = this.getCookie('refreshToken');
-
-    // Keep sessions alive (accessToken expires ~10-15 min)
-    if (this.accessToken && this.refreshToken) {
-      this.startAutoRefresh();
-    }
-  }
-
-  private isJwtExpiringSoon(token: string | null, withinSeconds = 120): boolean {
-    if (!token) return true;
-    try {
-      const [, payloadBase64] = token.split('.');
-      if (!payloadBase64) return true;
-
-      const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-      const payloadJson = atob(normalized);
-      const payload = JSON.parse(payloadJson) as { exp?: number };
-      if (!payload.exp) return true;
-
-      const expiresAtMs = payload.exp * 1000;
-      return Date.now() >= expiresAtMs - withinSeconds * 1000;
-    } catch {
-      return true;
-    }
-  }
-
-  startAutoRefresh(opts: { checkIntervalMs?: number; refreshWithinSeconds?: number } = {}) {
-    const checkIntervalMs = opts.checkIntervalMs ?? 60_000;
-    const refreshWithinSeconds = opts.refreshWithinSeconds ?? 120;
-
-    if (this.autoRefreshIntervalId) {
-      window.clearInterval(this.autoRefreshIntervalId);
-      this.autoRefreshIntervalId = null;
-    }
-
-    if (!this.refreshToken) return;
-
-    this.autoRefreshIntervalId = window.setInterval(async () => {
-      if (!this.refreshToken) return;
-      if (!this.isJwtExpiringSoon(this.accessToken, refreshWithinSeconds)) return;
-
-      const ok = await this.refreshAccessToken();
-      if (!ok) {
-        this.clearTokens();
-        window.location.href = '/login';
-      }
-    }, checkIntervalMs);
-  }
-
-  stopAutoRefresh() {
-    if (this.autoRefreshIntervalId) {
-      window.clearInterval(this.autoRefreshIntervalId);
-      this.autoRefreshIntervalId = null;
-    }
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    this.setCookie('accessToken', accessToken);
-    this.setCookie('refreshToken', refreshToken);
-    this.startAutoRefresh();
-  }
-
   clearTokens() {
-    this.stopAutoRefresh();
-    this.accessToken = null;
-    this.refreshToken = null;
     this.removeCookie('accessToken');
     this.removeCookie('refreshToken');
     this.removeCookie('user');
   }
 
-  getAccessToken() {
-    return this.accessToken;
-  }
-
   private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
     if (this.refreshInFlight) return this.refreshInFlight;
 
     this.refreshInFlight = (async () => {
@@ -114,16 +30,6 @@ class ApiClient {
         });
 
         if (!response.ok) return false;
-
-        const data = await response.json();
-        if (!data?.accessToken) return false;
-
-        this.accessToken = data.accessToken;
-        this.setCookie('accessToken', data.accessToken);
-        if (data.refreshToken) {
-          this.refreshToken = data.refreshToken;
-          this.setCookie('refreshToken', data.refreshToken);
-        }
         return true;
       } catch {
         return false;
@@ -143,8 +49,9 @@ class ApiClient {
       });
     } catch {
       // ignore
+    } finally {
+      this.clearTokens();
     }
-    this.clearTokens();
   }
 
   private async request<T>(
@@ -165,10 +72,7 @@ class ApiClient {
 
     const shouldAttemptRefresh =
       requiresAuth &&
-      !!this.refreshToken &&
-      !!this.accessToken &&
-      (response.status === 401 ||
-        (response.status === 403 && this.isJwtExpiringSoon(this.accessToken, 0)));
+      (response.status === 401 || response.status === 403);
 
     if (shouldAttemptRefresh) {
       const refreshed = await this.refreshAccessToken();
@@ -186,8 +90,14 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      let errorMessage = 'Request failed';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || error.message || errorMessage;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -202,9 +112,7 @@ class ApiClient {
       },
       false
     );
-
-    this.setTokens(response.accessToken, response.refreshToken);
-    this.setCookie('user', JSON.stringify(response.user));
+    // Tokens are automatically set in HttpOnly cookies by the server
     return response;
   }
 
