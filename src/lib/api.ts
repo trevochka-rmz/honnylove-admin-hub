@@ -8,9 +8,23 @@ class ApiClient {
   private refreshInFlight: Promise<boolean> | null = null;
   private autoRefreshIntervalId: number | null = null;
 
+  private getCookie(name: string): string | null {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  private setCookie(name: string, value: string, days = 30) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  }
+
+  private removeCookie(name: string) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+  }
+
   constructor() {
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
+    this.accessToken = this.getCookie('accessToken');
+    this.refreshToken = this.getCookie('refreshToken');
 
     // Keep sessions alive (accessToken expires ~10-15 min)
     if (this.accessToken && this.refreshToken) {
@@ -69,8 +83,8 @@ class ApiClient {
   setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    this.setCookie('accessToken', accessToken);
+    this.setCookie('refreshToken', refreshToken);
     this.startAutoRefresh();
   }
 
@@ -78,9 +92,9 @@ class ApiClient {
     this.stopAutoRefresh();
     this.accessToken = null;
     this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    this.removeCookie('accessToken');
+    this.removeCookie('refreshToken');
+    this.removeCookie('user');
   }
 
   getAccessToken() {
@@ -97,6 +111,7 @@ class ApiClient {
         const response = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ refreshToken: this.refreshToken }),
         });
 
@@ -106,7 +121,7 @@ class ApiClient {
         if (!data?.accessToken) return false;
 
         this.accessToken = data.accessToken;
-        localStorage.setItem('accessToken', data.accessToken);
+        this.setCookie('accessToken', data.accessToken);
         return true;
       } catch {
         return false;
@@ -128,13 +143,10 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    if (requiresAuth && this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     let response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include',
     });
 
     const shouldAttemptRefresh =
@@ -147,10 +159,10 @@ class ApiClient {
     if (shouldAttemptRefresh) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        headers['Authorization'] = `Bearer ${this.accessToken}`;
         response = await fetch(`${API_BASE}${endpoint}`, {
           ...options,
           headers,
+          credentials: 'include',
         });
       } else {
         this.clearTokens();
@@ -178,7 +190,7 @@ class ApiClient {
     );
 
     this.setTokens(response.accessToken, response.refreshToken);
-    localStorage.setItem('user', JSON.stringify(response.user));
+    this.setCookie('user', JSON.stringify(response.user));
     return response;
   }
 
@@ -234,14 +246,9 @@ class ApiClient {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/products/${id}`, {
       method: 'DELETE',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -251,14 +258,9 @@ class ApiClient {
   }
 
   async createProductWithImages(formData: FormData): Promise<Product> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/products`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -271,14 +273,9 @@ class ApiClient {
   }
 
   async updateProductWithImages(id: string, formData: FormData): Promise<Product> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/products/${id}`, {
       method: 'PUT',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -291,14 +288,9 @@ class ApiClient {
   }
 
   async exportProductsCSV(): Promise<Blob> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/products/export/csv`, {
       method: 'GET',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -310,14 +302,9 @@ class ApiClient {
   }
 
   async exportProductsPDF(): Promise<Blob> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/products/export/pdf`, {
       method: 'GET',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -352,14 +339,9 @@ class ApiClient {
   }
 
   async createBrand(formData: FormData): Promise<BrandDetail> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/brands/`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -372,14 +354,9 @@ class ApiClient {
   }
 
   async updateBrand(id: number, formData: FormData): Promise<BrandDetail> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/brands/${id}`, {
       method: 'PUT',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -392,14 +369,9 @@ class ApiClient {
   }
 
   async deleteBrand(id: number): Promise<void> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/brands/${id}`, {
       method: 'DELETE',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -417,14 +389,9 @@ class ApiClient {
   }
 
   async createCategory(formData: FormData): Promise<CreateCategoryResponse> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/categories`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -437,14 +404,9 @@ class ApiClient {
   }
 
   async updateCategory(id: number, formData: FormData): Promise<CategoryDetailResponse> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/categories/${id}`, {
       method: 'PUT',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -457,14 +419,9 @@ class ApiClient {
   }
 
   async deleteCategory(id: number): Promise<void> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/categories/${id}`, {
       method: 'DELETE',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -488,14 +445,9 @@ class ApiClient {
   }
 
   async createBlog(formData: FormData): Promise<BlogPost> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/blogs/`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -508,14 +460,9 @@ class ApiClient {
   }
 
   async updateBlog(id: string, formData: FormData): Promise<BlogPost> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/blogs/${id}`, {
       method: 'PUT',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -528,14 +475,9 @@ class ApiClient {
   }
 
   async deleteBlog(id: string): Promise<void> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/blogs/${id}`, {
       method: 'DELETE',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -635,14 +577,9 @@ class ApiClient {
   }
 
   async createBanner(formData: FormData): Promise<any> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/banners/`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -655,14 +592,9 @@ class ApiClient {
   }
 
   async updateBanner(id: number, formData: FormData): Promise<any> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/banners/${id}`, {
       method: 'PUT',
-      headers,
+      credentials: 'include',
       body: formData,
     });
 
@@ -675,14 +607,9 @@ class ApiClient {
   }
 
   async deleteBanner(id: number): Promise<void> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     const response = await fetch(`${API_BASE}/banners/${id}`, {
       method: 'DELETE',
-      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {

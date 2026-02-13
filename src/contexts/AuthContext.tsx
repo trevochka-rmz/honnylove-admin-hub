@@ -18,19 +18,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getCookie = (name: string): string | null => {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  };
+
   const refreshProfile = async () => {
     try {
       const profile = await api.getProfile();
       setUser(profile);
-      localStorage.setItem('user', JSON.stringify(profile));
+      document.cookie = `user=${encodeURIComponent(JSON.stringify(profile))}; path=/; SameSite=Lax`;
     } catch {
       // Token might be invalid
     }
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('accessToken');
+    const storedUser = getCookie('user');
+    const token = getCookie('accessToken');
     
     if (storedUser && token) {
       try {
