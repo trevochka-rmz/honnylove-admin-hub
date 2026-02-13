@@ -110,9 +110,7 @@ class ApiClient {
       try {
         const response = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ refreshToken: this.refreshToken }),
         });
 
         if (!response.ok) return false;
@@ -122,6 +120,10 @@ class ApiClient {
 
         this.accessToken = data.accessToken;
         this.setCookie('accessToken', data.accessToken);
+        if (data.refreshToken) {
+          this.refreshToken = data.refreshToken;
+          this.setCookie('refreshToken', data.refreshToken);
+        }
         return true;
       } catch {
         return false;
@@ -131,6 +133,18 @@ class ApiClient {
     })();
 
     return this.refreshInFlight;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // ignore
+    }
+    this.clearTokens();
   }
 
   private async request<T>(
