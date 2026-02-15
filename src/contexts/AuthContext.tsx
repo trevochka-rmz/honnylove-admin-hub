@@ -18,35 +18,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getCookie = (name: string): string | null => {
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
   const refreshProfile = async () => {
     try {
       const profile = await api.getProfile();
       setUser(profile);
-      document.cookie = `user=${encodeURIComponent(JSON.stringify(profile))}; path=/; SameSite=Lax`;
     } catch {
-      // Token might be invalid
+      setUser(null);
     }
   };
 
   useEffect(() => {
-    const storedUser = getCookie('user');
-    const token = getCookie('accessToken');
-    
-    if (storedUser && token) {
+    const checkAuth = async () => {
       try {
-        setUser(JSON.parse(storedUser));
-        // Refresh profile to get latest role
-        refreshProfile();
+        const profile = await api.getProfile();
+        setUser(profile);
       } catch {
-        api.clearTokens();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
