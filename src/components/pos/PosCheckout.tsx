@@ -41,6 +41,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import PosCatalog from './PosCatalog';
 
 interface CartItem {
   product_id: number;
@@ -323,6 +324,9 @@ export default function PosCheckout() {
             )}
           </CardContent>
         </Card>
+
+        {/* Product catalog browsing */}
+        <PosCatalog onAddToCart={addToCart} />
       </div>
 
       {/* Right - Payment info */}
