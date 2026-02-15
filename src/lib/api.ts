@@ -43,15 +43,12 @@ class ApiClient {
 
   async logout(): Promise<void> {
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
     } catch {
       // ignore
-    } finally {
-      // Clear local user cookie only; tokens are HttpOnly
-      this.removeCookie('user');
     }
   }
 
