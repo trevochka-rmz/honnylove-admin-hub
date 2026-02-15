@@ -14,8 +14,7 @@ class ApiClient {
   }
 
   clearTokens() {
-    this.removeCookie('accessToken');
-    this.removeCookie('refreshToken');
+    // Only clear client-readable cookie; accessToken/refreshToken are HttpOnly
     this.removeCookie('user');
   }
 
@@ -24,12 +23,13 @@ class ApiClient {
 
     this.refreshInFlight = (async () => {
       try {
-        const response = await fetch(`${API_BASE}/auth/refresh`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
 
         if (!response.ok) return false;
+        // Server sets new accessToken in cookie automatically
         return true;
       } catch {
         return false;
@@ -50,7 +50,8 @@ class ApiClient {
     } catch {
       // ignore
     } finally {
-      this.clearTokens();
+      // Clear local user cookie only; tokens are HttpOnly
+      this.removeCookie('user');
     }
   }
 
