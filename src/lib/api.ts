@@ -52,19 +52,17 @@ class ApiClient {
     }
   }
 
-  private async request<T>(
-    endpoint: string,
+  /**
+   * Core fetch wrapper with automatic 401 refresh retry.
+   * Used by both JSON requests and FormData/Blob requests.
+   */
+  private async fetchWithRefresh(
+    url: string,
     options: RequestInit = {},
     requiresAuth = true
-  ): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    let response = await fetch(`${API_BASE}${endpoint}`, {
+  ): Promise<Response> {
+    let response = await fetch(url, {
       ...options,
-      headers,
       credentials: 'include',
     });
 
@@ -75,17 +73,34 @@ class ApiClient {
     if (shouldAttemptRefresh) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        response = await fetch(`${API_BASE}${endpoint}`, {
+        response = await fetch(url, {
           ...options,
-          headers,
           credentials: 'include',
         });
       } else {
         this.clearTokens();
-        window.location.href = '/login';
         throw new Error('Session expired');
       }
     }
+
+    return response;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    requiresAuth = true
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    const response = await this.fetchWithRefresh(
+      `${API_BASE}${endpoint}`,
+      { ...options, headers },
+      requiresAuth
+    );
 
     if (!response.ok) {
       let errorMessage = 'Request failed';
@@ -166,9 +181,8 @@ class ApiClient {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/products/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -178,9 +192,8 @@ class ApiClient {
   }
 
   async createProductWithImages(formData: FormData): Promise<Product> {
-    const response = await fetch(`${API_BASE}/products`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products`, {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     });
 
@@ -193,9 +206,8 @@ class ApiClient {
   }
 
   async updateProductWithImages(id: string, formData: FormData): Promise<Product> {
-    const response = await fetch(`${API_BASE}/products/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${id}`, {
       method: 'PUT',
-      credentials: 'include',
       body: formData,
     });
 
@@ -208,9 +220,8 @@ class ApiClient {
   }
 
   async exportProductsCSV(): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/products/export/csv`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/csv`, {
       method: 'GET',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -222,9 +233,8 @@ class ApiClient {
   }
 
   async exportProductsPDF(): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/products/export/pdf`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/pdf`, {
       method: 'GET',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -259,9 +269,8 @@ class ApiClient {
   }
 
   async createBrand(formData: FormData): Promise<BrandDetail> {
-    const response = await fetch(`${API_BASE}/brands/`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/`, {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     });
 
@@ -274,9 +283,8 @@ class ApiClient {
   }
 
   async updateBrand(id: number, formData: FormData): Promise<BrandDetail> {
-    const response = await fetch(`${API_BASE}/brands/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, {
       method: 'PUT',
-      credentials: 'include',
       body: formData,
     });
 
@@ -289,9 +297,8 @@ class ApiClient {
   }
 
   async deleteBrand(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/brands/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -309,9 +316,8 @@ class ApiClient {
   }
 
   async createCategory(formData: FormData): Promise<CreateCategoryResponse> {
-    const response = await fetch(`${API_BASE}/categories`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories`, {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     });
 
@@ -324,9 +330,8 @@ class ApiClient {
   }
 
   async updateCategory(id: number, formData: FormData): Promise<CategoryDetailResponse> {
-    const response = await fetch(`${API_BASE}/categories/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, {
       method: 'PUT',
-      credentials: 'include',
       body: formData,
     });
 
@@ -339,9 +344,8 @@ class ApiClient {
   }
 
   async deleteCategory(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/categories/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -365,9 +369,8 @@ class ApiClient {
   }
 
   async createBlog(formData: FormData): Promise<BlogPost> {
-    const response = await fetch(`${API_BASE}/blogs/`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/`, {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     });
 
@@ -380,9 +383,8 @@ class ApiClient {
   }
 
   async updateBlog(id: string, formData: FormData): Promise<BlogPost> {
-    const response = await fetch(`${API_BASE}/blogs/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, {
       method: 'PUT',
-      credentials: 'include',
       body: formData,
     });
 
@@ -395,9 +397,8 @@ class ApiClient {
   }
 
   async deleteBlog(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/blogs/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -497,9 +498,8 @@ class ApiClient {
   }
 
   async createBanner(formData: FormData): Promise<any> {
-    const response = await fetch(`${API_BASE}/banners/`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/`, {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     });
 
@@ -512,9 +512,8 @@ class ApiClient {
   }
 
   async updateBanner(id: number, formData: FormData): Promise<any> {
-    const response = await fetch(`${API_BASE}/banners/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, {
       method: 'PUT',
-      credentials: 'include',
       body: formData,
     });
 
@@ -527,9 +526,8 @@ class ApiClient {
   }
 
   async deleteBanner(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/banners/${id}`, {
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
 
     if (!response.ok) {
