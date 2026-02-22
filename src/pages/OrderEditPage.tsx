@@ -28,6 +28,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -93,6 +100,12 @@ export default function OrderEditPage() {
   const [discountAmount, setDiscountAmount] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Status change
+  const [newStatus, setNewStatus] = useState('');
+  const [statusNotes, setStatusNotes] = useState('');
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   // Status descriptions
   const [statusDescriptions, setStatusDescriptions] = useState<Record<string, string>>({});
@@ -225,6 +238,42 @@ export default function OrderEditPage() {
     }
   };
 
+  const handleStatusChange = async () => {
+    if (!order || !newStatus) return;
+    setIsChangingStatus(true);
+    try {
+      const result = await api.updateOrderStatus(order.id, {
+        newStatus,
+        notes: statusNotes || undefined,
+      });
+      toast({ title: 'Успешно', description: result.message || 'Статус изменён' });
+      setShowStatusDialog(false);
+      setNewStatus('');
+      setStatusNotes('');
+      loadOrder(String(order.id));
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось изменить статус',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingStatus(false);
+    }
+  };
+
+  const allStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'returned'];
+  const statusLabelsMap: Record<string, string> = {
+    pending: 'Ожидает',
+    paid: 'Оплачен',
+    processing: 'В обработке',
+    shipped: 'Отправлен',
+    delivered: 'Доставлен',
+    completed: 'Завершён',
+    cancelled: 'Отменён',
+    returned: 'Возврат',
+  };
+
   const getStatusBadge = (status: string) => {
     const label = statusDescriptions[status] || status;
     const colorClass = statusColors[status] || 'bg-muted text-muted-foreground';
@@ -272,7 +321,15 @@ export default function OrderEditPage() {
           </p>
         </div>
         {getStatusBadge(order.status)}
-
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowStatusDialog(true)}
+          >
+            Изменить статус
+          </Button>
+        )}
         {isAdmin && (
           <div className="flex items-center gap-2">
             <AlertDialog>
@@ -655,6 +712,55 @@ export default function OrderEditPage() {
           </Card>
         )}
       </div>
+
+      {/* Status change dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Изменить статус заказа</DialogTitle>
+            <DialogDescription>
+              Текущий статус: {statusLabelsMap[order.status] || order.status}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Новый статус</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите статус" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allStatuses
+                    .filter((s) => s !== order.status)
+                    .map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {statusLabelsMap[s] || s}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Комментарий</Label>
+              <Textarea
+                value={statusNotes}
+                onChange={(e) => setStatusNotes(e.target.value)}
+                placeholder="Причина изменения (необязательно)"
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowStatusDialog(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleStatusChange} disabled={!newStatus || isChangingStatus}>
+                {isChangingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Изменить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

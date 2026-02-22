@@ -268,12 +268,16 @@ export default function ProductEditPage() {
         if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
         if (formData.target_audience) fd.append('target_audience', formData.target_audience);
         if (formData.skin_type) fd.append('skin_type', formData.skin_type);
-        if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
+        if (formData.stockQuantity) {
+          fd.append('stockQuantity', formData.stockQuantity);
+          fd.append('stock_quantity', formData.stockQuantity);
+        }
         if (formData.meta_title) fd.append('meta_title', formData.meta_title);
         if (formData.meta_description) fd.append('meta_description', formData.meta_description);
-        fd.append('is_new', formData.isNew.toString());
-        fd.append('is_bestseller', formData.isBestseller.toString());
-        fd.append('is_featured', formData.isFeatured.toString());
+        if (formData.sku) fd.append('sku', formData.sku);
+        fd.append('is_new', formData.isNew ? '1' : '0');
+        fd.append('is_bestseller', formData.isBestseller ? '1' : '0');
+        fd.append('is_featured', formData.isFeatured ? '1' : '0');
         
         // Build attributes object
         const attributes: Record<string, any> = {};
