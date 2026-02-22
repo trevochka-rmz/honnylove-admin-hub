@@ -629,6 +629,13 @@ class ApiClient {
     return this.request<any>('/pos/cashiers');
   }
 
+  async updateOrderStatus(orderId: number, data: { newStatus: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async posUpdateOrder(orderId: number, data: {
     payment_method?: string;
     discount_amount?: number;
