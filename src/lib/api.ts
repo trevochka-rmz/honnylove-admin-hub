@@ -14,8 +14,9 @@ class ApiClient {
   }
 
   clearTokens() {
-    // Only clear client-readable cookie; accessToken/refreshToken are HttpOnly
     this.removeCookie('user');
+    this.removeCookie('admin_accessToken');
+    this.removeCookie('admin_refreshToken');
   }
 
   private async refreshAccessToken(): Promise<boolean> {
