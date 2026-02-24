@@ -259,8 +259,8 @@ export default function ProductEditPage() {
         // For new products, send all fields via FormData
         const fd = new FormData();
         fd.append('name', formData.name);
-        fd.append('purchase_price', formData.purchasePrice || '0');
         fd.append('retail_price', formData.price || '0');
+        fd.append('purchase_price', formData.purchasePrice || '0');
         fd.append('brand_id', formData.brand_id || '1');
         fd.append('category_id', formData.category_id || '1');
         fd.append('product_type', formData.product_type);
@@ -268,35 +268,28 @@ export default function ProductEditPage() {
         if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
         if (formData.target_audience) fd.append('target_audience', formData.target_audience);
         if (formData.skin_type) fd.append('skin_type', formData.skin_type);
-        if (formData.stockQuantity) {
-          fd.append('stockQuantity', formData.stockQuantity);
-          fd.append('stock_quantity', formData.stockQuantity);
-        }
+        if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
         if (formData.meta_title) fd.append('meta_title', formData.meta_title);
         if (formData.meta_description) fd.append('meta_description', formData.meta_description);
-        if (formData.sku) fd.append('sku', formData.sku);
-        fd.append('is_new', formData.isNew ? '1' : '0');
-        fd.append('is_bestseller', formData.isBestseller ? '1' : '0');
-        fd.append('is_featured', formData.isFeatured ? '1' : '0');
+        fd.append('is_active', 'true');
+        fd.append('is_new', formData.isNew ? 'true' : 'false');
+        fd.append('is_bestseller', formData.isBestseller ? 'true' : 'false');
+        fd.append('is_featured', formData.isFeatured ? 'true' : 'false');
         
-        // Build attributes object
+        // Build attributes as JSON string
         const attributes: Record<string, any> = {};
         if (formData.ingredients) attributes.ingredients = formData.ingredients;
         if (formData.usage) attributes.usage = formData.usage;
-        if (formData.variant_name || formData.variant_value) {
-          attributes.variants = [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }];
-        }
-        // Only append attributes if not empty
-        if (Object.keys(attributes).length > 0) {
-          fd.append('attributes', JSON.stringify(attributes));
-        }
+        attributes.variants = [{ 
+          name: formData.variant_name || 'Объём', 
+          value: formData.variant_value || '50мл' 
+        }];
+        fd.append('attributes', JSON.stringify(attributes));
         
-        // Only append images if they exist
+        // Images
         if (mainImage) fd.append('mainImage', mainImage);
         const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
-        if (galleryFilesOnly.length > 0) {
-          galleryFilesOnly.forEach((file) => fd.append('gallery', file));
-        }
+        galleryFilesOnly.forEach((file) => fd.append('gallery', file));
         
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
@@ -791,7 +784,7 @@ export default function ProductEditPage() {
               <GalleryUpload
                 value={galleryFiles.filter((f): f is string => typeof f === 'string')}
                 onChange={setGalleryFiles}
-                maxImages={2}
+                maxImages={10}
                 disabled={!canEdit}
               />
             </CardContent>
