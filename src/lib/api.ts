@@ -60,7 +60,9 @@ class ApiClient {
 
     const shouldAttemptRefresh =
       requiresAuth &&
-      (response.status === 401 || response.status === 403);
+      (response.status === 401 || response.status === 403) &&
+      !url.includes('/auth/refresh') &&
+      !url.includes('/auth/admin/login');
 
     if (shouldAttemptRefresh) {
       const refreshed = await this.refreshAccessToken();
@@ -70,8 +72,10 @@ class ApiClient {
           credentials: 'include',
         });
       } else {
-        // Redirect to login on failed refresh
-        window.location.href = '/login';
+        // Don't redirect if already on login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         throw new Error('Session expired');
       }
     }

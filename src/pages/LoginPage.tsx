@@ -13,9 +13,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already authenticated
+  if (!authLoading && isAuthenticated) {
+    navigate('/', { replace: true });
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +42,7 @@ export default function LoginPage() {
         title: 'Успешно',
         description: 'Добро пожаловать в панель управления',
       });
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (error) {
       toast({
         title: 'Ошибка авторизации',
