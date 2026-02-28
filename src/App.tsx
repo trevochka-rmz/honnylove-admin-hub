@@ -35,7 +35,7 @@ const App = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter basename="/admin">
+        <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route

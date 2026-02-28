@@ -5,10 +5,15 @@ import { componentTagger } from 'lovable-tagger';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-    base: '/admin/',
+    // Удалите эту строку или закомментируйте:
+    // base: '/admin/',
+    
+    // Для поддомена base должен быть '/' или можно вообще не указывать
+    base: '/', // или просто удалите эту строку
+    
     server: {
         host: '::',
-        port: 8080,
+        port: 8090,
     },
     plugins: [react(), mode === 'development' && componentTagger()].filter(
         Boolean
@@ -18,11 +23,9 @@ export default defineConfig(({ mode }) => ({
             '@': path.resolve(__dirname, './src'),
         },
     },
-    // Опционально: для правильной генерации путей в сборке
     build: {
         outDir: 'dist',
         assetsDir: 'assets',
-        // Убедитесь что пути к assets генерируются правильно
         rollupOptions: {
             output: {
                 assetFileNames: 'assets/[name]-[hash][extname]',

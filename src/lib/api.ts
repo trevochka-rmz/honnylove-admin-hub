@@ -9,15 +9,6 @@ class ApiClient {
     // Tokens managed by browser via HttpOnly cookies
   }
 
-  private removeCookie(name: string) {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
-  }
-
-  clearTokens() {
-    this.removeCookie('user');
-    this.removeCookie('admin_accessToken');
-    this.removeCookie('admin_refreshToken');
-  }
 
   private async refreshAccessToken(): Promise<boolean> {
     if (this.refreshInFlight) return this.refreshInFlight;
@@ -79,7 +70,8 @@ class ApiClient {
           credentials: 'include',
         });
       } else {
-        this.clearTokens();
+        // Redirect to login on failed refresh
+        window.location.href = '/login';
         throw new Error('Session expired');
       }
     }
