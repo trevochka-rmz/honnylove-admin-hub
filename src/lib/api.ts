@@ -5,33 +5,20 @@ const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 class ApiClient {
   private refreshInFlight: Promise<boolean> | null = null;
 
-  constructor() {
-    // Tokens managed by browser via HttpOnly cookies
-  }
-
-  private removeCookie(name: string) {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
-  }
-
-  clearTokens() {
-    this.removeCookie('user');
-    this.removeCookie('admin_accessToken');
-    this.removeCookie('admin_refreshToken');
-  }
-
+  /**
+   * Attempt to refresh the access token via POST /auth/refresh.
+   * The server reads admin_refreshToken from cookies and sets a new admin_accessToken.
+   */
   private async refreshAccessToken(): Promise<boolean> {
     if (this.refreshInFlight) return this.refreshInFlight;
 
     this.refreshInFlight = (async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`, {
+        const response = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
-
-        if (!response.ok) return false;
-        // Server sets new accessToken in cookie automatically
-        return true;
+        return response.ok;
       } catch {
         return false;
       } finally {
@@ -42,46 +29,25 @@ class ApiClient {
     return this.refreshInFlight;
   }
 
-  async logout(): Promise<void> {
-    try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch {
-      // ignore
-    }
-  }
-
   /**
-   * Core fetch wrapper with automatic 401 refresh retry.
-   * Used by both JSON requests and FormData/Blob requests.
+   * Core fetch wrapper. On 401/403, attempts ONE refresh then retries.
    */
   private async fetchWithRefresh(
     url: string,
     options: RequestInit = {},
     requiresAuth = true
   ): Promise<Response> {
-    let response = await fetch(url, {
+    const response = await fetch(url, {
       ...options,
       credentials: 'include',
     });
 
-    const shouldAttemptRefresh =
-      requiresAuth &&
-      (response.status === 401 || response.status === 403);
-
-    if (shouldAttemptRefresh) {
+    if (requiresAuth && (response.status === 401 || response.status === 403)) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        response = await fetch(url, {
-          ...options,
-          credentials: 'include',
-        });
-      } else {
-        this.clearTokens();
-        throw new Error('Session expired');
+        return fetch(url, { ...options, credentials: 'include' });
       }
+      throw new Error('Session expired');
     }
 
     return response;
@@ -117,22 +83,35 @@ class ApiClient {
     return response.json();
   }
 
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>(
+  // ── Auth ──────────────────────────────────────────────
+
+  async login(email: string, password: string): Promise<{ user: User; message: string }> {
+    return this.request<{ user: User; message: string }>(
       '/auth/admin/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      },
+      { method: 'POST', body: JSON.stringify({ email, password }) },
       false
     );
-    // Tokens are automatically set in HttpOnly cookies by the server
-    return response;
   }
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  async getProfile(): Promise<User> {
+    return this.request<User>('/users/profile');
+  }
+
+  // ── Products ──────────────────────────────────────────
 
   async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
     const params = new URLSearchParams();
-    
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.brandId) params.append('brandId', filters.brandId.toString());
@@ -145,7 +124,6 @@ class ApiClient {
     if (filters.isOnSale) params.append('isOnSale', 'true');
     if (filters.sort) params.append('sort', filters.sort);
     if (filters.search) params.append('search', filters.search);
-
     const query = params.toString();
     return this.request<ProductsResponse>(`/products/admin/all${query ? `?${query}` : ''}`);
   }
@@ -182,10 +160,7 @@ class ApiClient {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/products/${id}`, {
-      method: 'DELETE',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
@@ -197,12 +172,10 @@ class ApiClient {
       method: 'POST',
       body: formData,
     });
-
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
@@ -211,47 +184,35 @@ class ApiClient {
       method: 'PUT',
       body: formData,
     });
-
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async exportProductsCSV(): Promise<Blob> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/csv`, {
-      method: 'GET',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/csv`, { method: 'GET' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Export failed' }));
       throw new Error(error.error || error.message || 'Export failed');
     }
-
     return response.blob();
   }
 
   async exportProductsPDF(): Promise<Blob> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/pdf`, {
-      method: 'GET',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/export/pdf`, { method: 'GET' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Export failed' }));
       throw new Error(error.error || error.message || 'Export failed');
     }
-
     return response.blob();
   }
 
-  async getBrandsBrief(): Promise<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }> {
-    return this.request<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }>('/brands/brief', {}, false);
-  }
+  // ── Brands ────────────────────────────────────────────
 
-  async getProfile(): Promise<User> {
-    return this.request<User>('/users/profile');
+  async getBrandsBrief(): Promise<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }> {
+    return this.request('/brands/brief', {}, false);
   }
 
   async getBrands(filters: BrandFilters = {}): Promise<BrandsResponse> {
@@ -260,7 +221,6 @@ class ApiClient {
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.search) params.append('search', filters.search);
     if (filters.filter) params.append('filter', filters.filter);
-
     const query = params.toString();
     return this.request<BrandsResponse>(`/brands${query ? `?${query}` : ''}`, {}, false);
   }
@@ -270,43 +230,32 @@ class ApiClient {
   }
 
   async createBrand(formData: FormData): Promise<BrandDetail> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/brands/`, {
-      method: 'POST',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/`, { method: 'POST', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async updateBrand(id: number, formData: FormData): Promise<BrandDetail> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async deleteBrand(id: number): Promise<void> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, {
-      method: 'DELETE',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
   }
+
+  // ── Categories ────────────────────────────────────────
 
   async getCategories(): Promise<CategoriesResponse> {
     return this.request<CategoriesResponse>('/categories/all', {}, false);
@@ -317,50 +266,38 @@ class ApiClient {
   }
 
   async createCategory(formData: FormData): Promise<CreateCategoryResponse> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/categories`, {
-      method: 'POST',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories`, { method: 'POST', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async updateCategory(id: number, formData: FormData): Promise<CategoryDetailResponse> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async deleteCategory(id: number): Promise<void> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, {
-      method: 'DELETE',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
   }
+
+  // ── Blogs ─────────────────────────────────────────────
 
   async getBlogs(params: { limit?: number; page?: number; search?: string } = {}): Promise<BlogsResponse> {
     const qs = new URLSearchParams();
     if (params.limit) qs.append('limit', params.limit.toString());
     if (params.page) qs.append('page', params.page.toString());
     if (params.search) qs.append('search', params.search);
-
     const query = qs.toString();
     return this.request<BlogsResponse>(`/blogs${query ? `?${query}` : ''}`, {}, false);
   }
@@ -370,43 +307,36 @@ class ApiClient {
   }
 
   async createBlog(formData: FormData): Promise<BlogPost> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/`, {
-      method: 'POST',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/`, { method: 'POST', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async updateBlog(id: string, formData: FormData): Promise<BlogPost> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async deleteBlog(id: string): Promise<void> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, {
-      method: 'DELETE',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
   }
+
+  async getBlogTags(): Promise<string[]> {
+    return this.request<string[]>('/blogs/tags/all', {}, false);
+  }
+
+  // ── Users ─────────────────────────────────────────────
 
   async getUsers(): Promise<User[]> {
     return this.request<User[]>('/users');
@@ -416,7 +346,8 @@ class ApiClient {
     return this.request<User>(`/users/${id}`);
   }
 
-  // Orders
+  // ── Orders ────────────────────────────────────────────
+
   async getOrderStatuses(): Promise<OrderStatusesResponse> {
     return this.request<OrderStatusesResponse>('/orders/statuses', {}, false);
   }
@@ -430,7 +361,6 @@ class ApiClient {
     if (filters.date_from) params.append('date_from', filters.date_from);
     if (filters.date_to) params.append('date_to', filters.date_to);
     if (filters.search) params.append('search', filters.search);
-
     const query = params.toString();
     return this.request<OrdersResponse>(`/orders/admin/orders${query ? `?${query}` : ''}`);
   }
@@ -475,9 +405,7 @@ class ApiClient {
   }
 
   async deleteOrder(id: number): Promise<void> {
-    await this.request<{ success: boolean }>(`/orders/${id}`, {
-      method: 'DELETE',
-    });
+    await this.request<{ success: boolean }>(`/orders/${id}`, { method: 'DELETE' });
   }
 
   async addOrderItem(orderId: number, data: { product_id: number; quantity: number }): Promise<void> {
@@ -493,55 +421,47 @@ class ApiClient {
     });
   }
 
-  // Banners
+  async updateOrderStatus(orderId: number, data: { newStatus: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ── Banners ───────────────────────────────────────────
+
   async getBanners(): Promise<any[]> {
     return this.request<any[]>('/banners', {}, false);
   }
 
   async createBanner(formData: FormData): Promise<any> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/banners/`, {
-      method: 'POST',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/`, { method: 'POST', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async updateBanner(id: number, formData: FormData): Promise<any> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
-
     return response.json();
   }
 
   async deleteBanner(id: number): Promise<void> {
-    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, {
-      method: 'DELETE',
-    });
-
+    const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
       throw new Error(error.error || error.message || 'Request failed');
     }
   }
 
-  async getBlogTags(): Promise<string[]> {
-    return this.request<string[]>('/blogs/tags/all', {}, false);
-  }
+  // ── POS ───────────────────────────────────────────────
 
-  // POS
   async posPreview(productIds: number[]): Promise<any> {
     return this.request<any>('/pos/preview', {
       method: 'POST',
@@ -630,13 +550,6 @@ class ApiClient {
     return this.request<any>('/pos/cashiers');
   }
 
-  async updateOrderStatus(orderId: number, data: { newStatus: string; notes?: string }): Promise<any> {
-    return this.request<any>(`/admin/orders/${orderId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
   async posUpdateOrder(orderId: number, data: {
     payment_method?: string;
     discount_amount?: number;
@@ -651,11 +564,8 @@ class ApiClient {
   }
 
   async posDeleteOrder(orderId: number): Promise<any> {
-    return this.request<any>(`/pos/orders/${orderId}`, {
-      method: 'DELETE',
-    });
+    return this.request<any>(`/pos/orders/${orderId}`, { method: 'DELETE' });
   }
 }
-
 
 export const api = new ApiClient();
