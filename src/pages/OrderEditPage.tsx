@@ -715,7 +715,7 @@ export default function OrderEditPage() {
 
       {/* Status change dialog */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Изменить статус заказа</DialogTitle>
             <DialogDescription>
