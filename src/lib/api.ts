@@ -362,11 +362,15 @@ class ApiClient {
     if (filters.date_to) params.append('date_to', filters.date_to);
     if (filters.search) params.append('search', filters.search);
     const query = params.toString();
-    return this.request<OrdersResponse>(`/orders/admin/orders${query ? `?${query}` : ''}`);
+    return this.request<OrdersResponse>(`/orders/admin${query ? `?${query}` : ''}`);
+  }
+
+  async getOrderStats(): Promise<any> {
+    return this.request<any>('/orders/admin/stats');
   }
 
   async getOrder(id: number): Promise<Order> {
-    const response = await this.request<{ success: boolean; order: Order }>(`/orders/${id}`);
+    const response = await this.request<{ success: boolean; order: Order }>(`/orders/admin/${id}`);
     return response.order;
   }
 
@@ -381,7 +385,7 @@ class ApiClient {
     discount_amount?: number;
     tracking_number?: string;
   }): Promise<Order> {
-    const response = await this.request<{ success: boolean; order: Order }>('/orders/admin/orders', {
+    const response = await this.request<{ success: boolean; order: Order }>('/orders/admin', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -397,7 +401,7 @@ class ApiClient {
     tracking_number: string;
     notes: string;
   }>): Promise<Order> {
-    const response = await this.request<{ success: boolean; order: Order }>(`/orders/${id}`, {
+    const response = await this.request<{ success: boolean; order: Order }>(`/orders/admin/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -405,24 +409,24 @@ class ApiClient {
   }
 
   async deleteOrder(id: number): Promise<void> {
-    await this.request<{ success: boolean }>(`/orders/${id}`, { method: 'DELETE' });
+    await this.request<{ success: boolean }>(`/orders/admin/${id}`, { method: 'DELETE' });
   }
 
   async addOrderItem(orderId: number, data: { product_id: number; quantity: number }): Promise<void> {
-    await this.request<{ success: boolean }>(`/orders/admin/orders/${orderId}/items`, {
+    await this.request<{ success: boolean }>(`/orders/admin/${orderId}/items`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async removeOrderItem(orderId: number, itemId: number): Promise<void> {
-    await this.request<{ success: boolean }>(`/orders/admin/orders/${orderId}/items/${itemId}`, {
+    await this.request<{ success: boolean }>(`/orders/admin/${orderId}/items/${itemId}`, {
       method: 'DELETE',
     });
   }
 
   async updateOrderStatus(orderId: number, data: { newStatus: string; notes?: string }): Promise<any> {
-    return this.request<any>(`/admin/orders/${orderId}/status`, {
+    return this.request<any>(`/orders/admin/${orderId}/status`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
