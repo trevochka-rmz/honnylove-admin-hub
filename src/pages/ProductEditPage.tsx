@@ -295,7 +295,6 @@ export default function ProductEditPage() {
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
         // Update existing product - only send changed fields
-        const hasNewImages = mainImage || galleryFiles.some((f) => f instanceof File);
         
         // Build the update payload with only changed fields
         const updatePayload: Record<string, any> = {};
