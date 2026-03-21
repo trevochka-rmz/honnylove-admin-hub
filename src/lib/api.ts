@@ -133,10 +133,19 @@ class ApiClient {
   }
 
   async updateProduct(id: string, data: Partial<Product>): Promise<Product> {
-    return this.request<Product>(`/products/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    // Always use FormData for updates (backend requires multipart/form-data)
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined || value === null) continue;
+      if (key === 'attributes') {
+        fd.append('attributes', typeof value === 'string' ? value : JSON.stringify(value));
+      } else if (typeof value === 'boolean') {
+        fd.append(key, value.toString());
+      } else {
+        fd.append(key, String(value));
+      }
+    }
+    return this.updateProductWithImages(id, fd);
   }
 
   async createProduct(data: {
