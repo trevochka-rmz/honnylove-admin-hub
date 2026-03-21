@@ -373,13 +373,15 @@ export default function ProductEditPage() {
           updatePayload.attributes = attributes;
         }
 
+        const hasNewImages = mainImage || galleryFiles.some((f) => f instanceof File);
         const hasFieldChanges = Object.keys(updatePayload).length > 0;
 
-        if (hasNewImages) {
-          // Use FormData for image uploads
+        if (!hasFieldChanges && !hasNewImages) {
+          toast({ title: 'Информация', description: 'Нет изменений для сохранения' });
+        } else {
+          // Always use FormData (backend requires multipart/form-data)
           const fd = new FormData();
           
-          // Add all changed fields to FormData
           for (const [key, value] of Object.entries(updatePayload)) {
             if (key === 'attributes') {
               fd.append('attributes', JSON.stringify(value));
@@ -400,12 +402,6 @@ export default function ProductEditPage() {
           
           await api.updateProductWithImages(id, fd);
           toast({ title: 'Успешно', description: 'Товар обновлен' });
-        } else if (hasFieldChanges) {
-          // Use regular JSON request for non-image updates
-          await api.updateProduct(id, updatePayload);
-          toast({ title: 'Успешно', description: 'Товар обновлен' });
-        } else {
-          toast({ title: 'Информация', description: 'Нет изменений для сохранения' });
         }
       }
       navigate(-1);
