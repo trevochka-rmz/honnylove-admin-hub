@@ -369,6 +369,22 @@ export default function ProductsPage() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-right">
+                        {product.priceKg ? (
+                          <div>
+                            <span className="font-semibold text-foreground">
+                              {Number(product.priceKg).toLocaleString('ru-RU')} сом
+                            </span>
+                            {product.discountPriceKg && (
+                              <p className="text-xs text-destructive">
+                                {Number(product.discountPriceKg).toLocaleString('ru-RU')} сом
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 justify-center">
                           {product.inStock ? (
