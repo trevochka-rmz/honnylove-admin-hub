@@ -571,7 +571,7 @@ export default function ProductEditPage() {
             <CardHeader>
               <CardTitle>Цены и наличие</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {isAdmin && (
                   <div className="space-y-2">
@@ -587,7 +587,7 @@ export default function ProductEditPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="price">Розничная цена</Label>
+                  <Label htmlFor="price">Розничная цена ₽</Label>
                   <Input
                     id="price"
                     type="number"
@@ -598,7 +598,7 @@ export default function ProductEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="discountPrice">Цена со скидкой</Label>
+                  <Label htmlFor="discountPrice">Скидка ₽</Label>
                   <Input
                     id="discountPrice"
                     type="number"
@@ -616,6 +616,30 @@ export default function ProductEditPage() {
                     value={formData.stockQuantity}
                     onChange={(e) => handleChange('stockQuantity', e.target.value)}
                     placeholder="0"
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="priceKg">Цена KG (сом)</Label>
+                  <Input
+                    id="priceKg"
+                    type="number"
+                    value={formData.priceKg}
+                    onChange={(e) => handleChange('priceKg', e.target.value)}
+                    placeholder="Кыргызская цена"
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="discountPriceKg">Скидка KG (сом)</Label>
+                  <Input
+                    id="discountPriceKg"
+                    type="number"
+                    value={formData.discountPriceKg}
+                    onChange={(e) => handleChange('discountPriceKg', e.target.value)}
+                    placeholder="Опционально"
                     disabled={!canEdit}
                   />
                 </div>
