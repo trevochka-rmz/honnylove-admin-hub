@@ -313,8 +313,10 @@ export default function ProductsPage() {
                     <TableHead>Категория</TableHead>
                     {isAdmin && <TableHead className="text-right">Закупка</TableHead>}
                     <TableHead className="text-right">Цена</TableHead>
+                    <TableHead className="text-right">Цена KG</TableHead>
                     <TableHead className="text-center">Статус</TableHead>
                     <TableHead className="text-center">Кол-во</TableHead>
+                  </TableRow>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
