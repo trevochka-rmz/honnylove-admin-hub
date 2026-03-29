@@ -323,6 +323,12 @@ export default function ProductEditPage() {
         if (formData.discountPrice !== originalData?.discountPrice) {
           updatePayload.discount_price = formData.discountPrice || '';
         }
+        if (formData.priceKg !== originalData?.priceKg) {
+          updatePayload.price_kg = formData.priceKg || '';
+        }
+        if (formData.discountPriceKg !== originalData?.discountPriceKg) {
+          updatePayload.discount_price_kg = formData.discountPriceKg || '';
+        }
         if (formData.brand_id !== originalData?.brand_id) {
           updatePayload.brand_id = formData.brand_id;
         }
