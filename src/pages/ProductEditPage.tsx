@@ -179,6 +179,8 @@ export default function ProductEditPage() {
         purchasePrice: data.purchasePrice || '',
         price: data.price || '',
         discountPrice: data.discountPrice || '',
+        priceKg: data.priceKg || '',
+        discountPriceKg: data.discountPriceKg || '',
         brand_id: data.brand_id?.toString() || '',
         category_id: data.category_id?.toString() || '',
         sku: data.sku || '',
@@ -196,6 +198,7 @@ export default function ProductEditPage() {
         meta_description: data.meta_description || '',
         stockQuantity: data.stockQuantity?.toString() || '',
       });
+      setStockVariants(data.stockVariants || []);
       // Set existing gallery images
       if (data.images && data.images.length > 0) {
         setGalleryFiles(data.images);
