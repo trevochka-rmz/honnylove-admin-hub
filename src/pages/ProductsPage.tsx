@@ -313,6 +313,7 @@ export default function ProductsPage() {
                     <TableHead>Категория</TableHead>
                     {isAdmin && <TableHead className="text-right">Закупка</TableHead>}
                     <TableHead className="text-right">Цена</TableHead>
+                    <TableHead className="text-right">Цена KG</TableHead>
                     <TableHead className="text-center">Статус</TableHead>
                     <TableHead className="text-center">Кол-во</TableHead>
                   </TableRow>
@@ -367,6 +368,22 @@ export default function ProductsPage() {
                             </p>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {product.priceKg ? (
+                          <div>
+                            <span className="font-semibold text-foreground">
+                              {Number(product.priceKg).toLocaleString('ru-RU')} сом
+                            </span>
+                            {product.discountPriceKg && (
+                              <p className="text-xs text-destructive">
+                                {Number(product.discountPriceKg).toLocaleString('ru-RU')} сом
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 justify-center">

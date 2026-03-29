@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Product, Category } from '@/types';
+import type { Product, Category, StockVariant } from '@/types';
+import ProductVariantsManager from '@/components/product/ProductVariantsManager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -132,6 +133,8 @@ export default function ProductEditPage() {
     purchasePrice: '',
     price: '',
     discountPrice: '',
+    priceKg: '',
+    discountPriceKg: '',
     brand_id: '',
     category_id: '',
     sku: '',
@@ -149,6 +152,8 @@ export default function ProductEditPage() {
     meta_description: '',
     stockQuantity: '',
   });
+
+  const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
 
   const [product, setProduct] = useState<Product | null>(null);
 
@@ -174,6 +179,8 @@ export default function ProductEditPage() {
         purchasePrice: data.purchasePrice || '',
         price: data.price || '',
         discountPrice: data.discountPrice || '',
+        priceKg: data.priceKg || '',
+        discountPriceKg: data.discountPriceKg || '',
         brand_id: data.brand_id?.toString() || '',
         category_id: data.category_id?.toString() || '',
         sku: data.sku || '',
@@ -191,6 +198,7 @@ export default function ProductEditPage() {
         meta_description: data.meta_description || '',
         stockQuantity: data.stockQuantity?.toString() || '',
       });
+      setStockVariants(data.stockVariants || []);
       // Set existing gallery images
       if (data.images && data.images.length > 0) {
         setGalleryFiles(data.images);
@@ -314,6 +322,12 @@ export default function ProductEditPage() {
         }
         if (formData.discountPrice !== originalData?.discountPrice) {
           updatePayload.discount_price = formData.discountPrice || '';
+        }
+        if (formData.priceKg !== originalData?.priceKg) {
+          updatePayload.price_kg = formData.priceKg || '';
+        }
+        if (formData.discountPriceKg !== originalData?.discountPriceKg) {
+          updatePayload.discount_price_kg = formData.discountPriceKg || '';
         }
         if (formData.brand_id !== originalData?.brand_id) {
           updatePayload.brand_id = formData.brand_id;
@@ -563,7 +577,7 @@ export default function ProductEditPage() {
             <CardHeader>
               <CardTitle>Цены и наличие</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {isAdmin && (
                   <div className="space-y-2">
@@ -579,7 +593,7 @@ export default function ProductEditPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="price">Розничная цена</Label>
+                  <Label htmlFor="price">Розничная цена ₽</Label>
                   <Input
                     id="price"
                     type="number"
@@ -590,7 +604,7 @@ export default function ProductEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="discountPrice">Цена со скидкой</Label>
+                  <Label htmlFor="discountPrice">Скидка ₽</Label>
                   <Input
                     id="discountPrice"
                     type="number"
@@ -608,6 +622,30 @@ export default function ProductEditPage() {
                     value={formData.stockQuantity}
                     onChange={(e) => handleChange('stockQuantity', e.target.value)}
                     placeholder="0"
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="priceKg">Цена KG (сом)</Label>
+                  <Input
+                    id="priceKg"
+                    type="number"
+                    value={formData.priceKg}
+                    onChange={(e) => handleChange('priceKg', e.target.value)}
+                    placeholder="Кыргызская цена"
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="discountPriceKg">Скидка KG (сом)</Label>
+                  <Input
+                    id="discountPriceKg"
+                    type="number"
+                    value={formData.discountPriceKg}
+                    onChange={(e) => handleChange('discountPriceKg', e.target.value)}
+                    placeholder="Опционально"
                     disabled={!canEdit}
                   />
                 </div>
@@ -779,7 +817,7 @@ export default function ProductEditPage() {
               <GalleryUpload
                 value={galleryFiles.filter((f): f is string => typeof f === 'string')}
                 onChange={setGalleryFiles}
-                maxImages={10}
+                maxImages={2}
                 disabled={!canEdit}
               />
             </CardContent>
@@ -829,6 +867,16 @@ export default function ProductEditPage() {
           </Card>
         </div>
       </div>
+
+      {/* Variants Section - full width below */}
+      {!isNew && id && (
+        <ProductVariantsManager
+          productId={id}
+          variants={stockVariants}
+          onVariantsChange={setStockVariants}
+          canEdit={canEdit}
+        />
+      )}
     </div>
   );
 }

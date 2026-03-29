@@ -1,4 +1,4 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters, StockVariant } from '@/types';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -218,7 +218,48 @@ class ApiClient {
     return response.blob();
   }
 
+  // ── Product Variants ──────────────────────────────────
+
+  async getProductVariants(productId: string): Promise<StockVariant[]> {
+    return this.request<StockVariant[]>(`/products/${productId}/variants`);
+  }
+
+  async createProductVariant(productId: string, formData: FormData): Promise<StockVariant> {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${productId}/variants`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+    return response.json();
+  }
+
+  async updateProductVariant(productId: string, variantId: number, formData: FormData): Promise<StockVariant> {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${productId}/variants/${variantId}`, {
+      method: 'PUT',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+    return response.json();
+  }
+
+  async deleteProductVariant(productId: string, variantId: number): Promise<void> {
+    const response = await this.fetchWithRefresh(`${API_BASE}/products/${productId}/variants/${variantId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+  }
+
   // ── Brands ────────────────────────────────────────────
+
 
   async getBrandsBrief(): Promise<{ success: boolean; count: number; brands: { id: number; slug: string; name: string; logo: string }[] }> {
     return this.request('/brands/brief', {}, false);

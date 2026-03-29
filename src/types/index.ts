@@ -104,6 +104,27 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export interface StockVariant {
+  id: number;
+  sku: string | null;
+  name: string;
+  image: string;
+  images: string[];
+  isNew: boolean;
+  price: number;
+  priceKg: number | null;
+  inStock: boolean;
+  options: Record<string, string>;
+  isActive: boolean;
+  sortOrder: number;
+  isFeatured: boolean;
+  isAvailable: boolean;
+  isBestseller: boolean;
+  discountPrice: number | null;
+  discountPriceKg: number | null;
+  stockQuantity: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -112,6 +133,8 @@ export interface Product {
   purchasePrice: string;
   price: string;
   discountPrice: string | null;
+  priceKg: string | null;
+  discountPriceKg: string | null;
   brand: string;
   brand_id: number;
   brand_slug: string;
@@ -136,6 +159,7 @@ export interface Product {
   isNew: boolean;
   isBestseller: boolean;
   isFeatured: boolean;
+  isActive: boolean;
   rating: string;
   reviewCount: number;
   created_at: string;
@@ -152,6 +176,7 @@ export interface Product {
   meta_title: string | null;
   meta_description: string | null;
   stockQuantity: number | null;
+  stockVariants: StockVariant[];
 }
 
 export interface ProductsResponse {
