@@ -133,6 +133,8 @@ export default function ProductEditPage() {
     purchasePrice: '',
     price: '',
     discountPrice: '',
+    priceKg: '',
+    discountPriceKg: '',
     brand_id: '',
     category_id: '',
     sku: '',
@@ -150,6 +152,8 @@ export default function ProductEditPage() {
     meta_description: '',
     stockQuantity: '',
   });
+
+  const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
 
   const [product, setProduct] = useState<Product | null>(null);
 
