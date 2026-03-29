@@ -317,7 +317,6 @@ export default function ProductsPage() {
                     <TableHead className="text-center">Статус</TableHead>
                     <TableHead className="text-center">Кол-во</TableHead>
                   </TableRow>
-                  </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => (
