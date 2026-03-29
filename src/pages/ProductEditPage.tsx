@@ -811,7 +811,7 @@ export default function ProductEditPage() {
               <GalleryUpload
                 value={galleryFiles.filter((f): f is string => typeof f === 'string')}
                 onChange={setGalleryFiles}
-                maxImages={10}
+                maxImages={2}
                 disabled={!canEdit}
               />
             </CardContent>
