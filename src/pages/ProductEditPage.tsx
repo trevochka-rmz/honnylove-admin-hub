@@ -861,6 +861,16 @@ export default function ProductEditPage() {
           </Card>
         </div>
       </div>
+
+      {/* Variants Section - full width below */}
+      {!isNew && id && (
+        <ProductVariantsManager
+          productId={id}
+          variants={stockVariants}
+          onVariantsChange={setStockVariants}
+          canEdit={canEdit}
+        />
+      )}
     </div>
   );
 }
