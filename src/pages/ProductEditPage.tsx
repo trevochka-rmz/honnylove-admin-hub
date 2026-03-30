@@ -845,6 +845,7 @@ export default function ProductEditPage() {
           variants={stockVariants}
           onVariantsChange={setStockVariants}
           canEdit={canEdit}
+          productImage={formData.image || null}
         />
       )}
     </div>

@@ -42,6 +42,7 @@ interface Props {
   variants: StockVariant[];
   onVariantsChange: (variants: StockVariant[]) => void;
   canEdit: boolean;
+  productImage?: string | null;
 }
 
 interface VariantFormData {
