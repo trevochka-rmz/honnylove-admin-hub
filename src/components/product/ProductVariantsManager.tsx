@@ -73,7 +73,7 @@ const emptyForm: VariantFormData = {
   sortOrder: '0',
 };
 
-export default function ProductVariantsManager({ productId, variants, onVariantsChange, canEdit }: Props) {
+export default function ProductVariantsManager({ productId, variants, onVariantsChange, canEdit, productImage }: Props) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<StockVariant | null>(null);
