@@ -254,8 +254,8 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                   <TableRow key={v.id} className="group">
                     <TableCell>
                       <div className="w-10 h-10 rounded overflow-hidden bg-muted">
-                        {v.image ? (
-                          <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
+                        {(v.image || productImage) ? (
+                          <img src={v.image || productImage!} alt={v.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ImageIcon className="h-4 w-4 text-muted-foreground" />
