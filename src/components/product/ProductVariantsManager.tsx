@@ -42,6 +42,7 @@ interface Props {
   variants: StockVariant[];
   onVariantsChange: (variants: StockVariant[]) => void;
   canEdit: boolean;
+  productImage?: string | null;
 }
 
 interface VariantFormData {
@@ -72,7 +73,7 @@ const emptyForm: VariantFormData = {
   sortOrder: '0',
 };
 
-export default function ProductVariantsManager({ productId, variants, onVariantsChange, canEdit }: Props) {
+export default function ProductVariantsManager({ productId, variants, onVariantsChange, canEdit, productImage }: Props) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<StockVariant | null>(null);
@@ -253,8 +254,8 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                   <TableRow key={v.id} className="group">
                     <TableCell>
                       <div className="w-10 h-10 rounded overflow-hidden bg-muted">
-                        {v.image ? (
-                          <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
+                        {(v.image || productImage) ? (
+                          <img src={v.image || productImage!} alt={v.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -463,7 +464,15 @@ export default function ProductVariantsManager({ productId, variants, onVariants
             <div className="space-y-2">
               <Label>Главное фото варианта</Label>
               {(imagePreview && !mainImage) && (
-                <img src={imagePreview} alt="preview" className="w-20 h-20 rounded object-cover" />
+                <div className="space-y-1">
+                  <img src={imagePreview} alt="preview" className="w-20 h-20 rounded object-cover" />
+                </div>
+              )}
+              {(!imagePreview && !mainImage && productImage) && (
+                <div className="space-y-1">
+                  <img src={productImage} alt="product" className="w-20 h-20 rounded object-cover opacity-60" />
+                  <p className="text-xs text-muted-foreground">Используется фото товара</p>
+                </div>
               )}
               <Input
                 type="file"
