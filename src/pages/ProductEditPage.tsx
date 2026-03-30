@@ -728,36 +728,6 @@ export default function ProductEditPage() {
                   disabled={!canEdit}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label>Объём / вес</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="variant_name" className="text-xs text-muted-foreground">
-                      Название
-                    </Label>
-                    <Input
-                      id="variant_name"
-                      value={formData.variant_name}
-                      onChange={(e) => handleChange('variant_name', e.target.value)}
-                      placeholder="Объём или Вес"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="variant_value" className="text-xs text-muted-foreground">
-                      Значение
-                    </Label>
-                    <Input
-                      id="variant_value"
-                      value={formData.variant_value}
-                      onChange={(e) => handleChange('variant_value', e.target.value)}
-                      placeholder="Например: 50мл"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
