@@ -464,7 +464,15 @@ export default function ProductVariantsManager({ productId, variants, onVariants
             <div className="space-y-2">
               <Label>Главное фото варианта</Label>
               {(imagePreview && !mainImage) && (
-                <img src={imagePreview} alt="preview" className="w-20 h-20 rounded object-cover" />
+                <div className="space-y-1">
+                  <img src={imagePreview} alt="preview" className="w-20 h-20 rounded object-cover" />
+                </div>
+              )}
+              {(!imagePreview && !mainImage && productImage) && (
+                <div className="space-y-1">
+                  <img src={productImage} alt="product" className="w-20 h-20 rounded object-cover opacity-60" />
+                  <p className="text-xs text-muted-foreground">Используется фото товара</p>
+                </div>
               )}
               <Input
                 type="file"
