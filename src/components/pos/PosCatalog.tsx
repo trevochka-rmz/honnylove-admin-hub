@@ -83,7 +83,7 @@ export default function PosCatalog({ onAddToCart }: PosCatalogProps) {
                     key={product.id}
                     className="group relative flex flex-col rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary/50 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring"
                     onClick={() => onAddToCart(product)}
-                    disabled={!product.inStock}
+                    disabled={!product.inStockTotal}
                   >
                     {/* Image */}
                     <div className="aspect-square w-full rounded-md bg-muted overflow-hidden mb-2">
@@ -120,7 +120,7 @@ export default function PosCatalog({ onAddToCart }: PosCatalogProps) {
                     </div>
 
                     {/* Out of stock overlay */}
-                    {!product.inStock && (
+                    {!product.inStockTotal && (
                       <div className="absolute inset-0 rounded-lg bg-background/60 flex items-center justify-center">
                         <Badge variant="secondary" className="text-xs">Нет в наличии</Badge>
                       </div>

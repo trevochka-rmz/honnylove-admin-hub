@@ -115,7 +115,7 @@ export default function PosCheckout() {
           image: product.image,
           price: product.discountPrice ? Number(product.discountPrice) : Number(product.price),
           quantity: 1,
-          available_stock: product.stockQuantity ?? 999,
+          available_stock: product.stockQuantityTotal ?? 999,
         },
       ];
     });
