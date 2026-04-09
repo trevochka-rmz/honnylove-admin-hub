@@ -31,11 +31,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImageUpload, GalleryUpload } from '@/components/ImageUpload';
@@ -131,6 +126,7 @@ export default function ProductEditPage() {
     name: '',
     description: '',
     purchasePrice: '',
+    purchasePriceKg: '',
     price: '',
     discountPrice: '',
     priceKg: '',
@@ -143,8 +139,6 @@ export default function ProductEditPage() {
     skin_type: '',
     ingredients: '',
     usage: '',
-    variant_name: '',
-    variant_value: '',
     isNew: false,
     isBestseller: false,
     isFeatured: false,
@@ -189,14 +183,13 @@ export default function ProductEditPage() {
         skin_type: data.skin_type || '',
         ingredients: data.ingredients || '',
         usage: data.usage || '',
-        variant_name: data.variants?.[0]?.name || '',
-        variant_value: data.variants?.[0]?.value || '',
+        purchasePriceKg: data.purchasePriceKg || '',
         isNew: data.isNew ?? false,
         isBestseller: data.isBestseller ?? false,
         isFeatured: data.isFeatured ?? false,
         meta_title: data.meta_title || '',
         meta_description: data.meta_description || '',
-        stockQuantity: data.stockQuantity?.toString() || '',
+        stockQuantity: data.stockQuantityTotal?.toString() || '',
       });
       setStockVariants(data.stockVariants || []);
       // Set existing gallery images
@@ -288,10 +281,6 @@ export default function ProductEditPage() {
         const attributes: Record<string, any> = {};
         if (formData.ingredients) attributes.ingredients = formData.ingredients;
         if (formData.usage) attributes.usage = formData.usage;
-        attributes.variants = [{ 
-          name: formData.variant_name || 'Объём', 
-          value: formData.variant_value || '50мл' 
-        }];
         fd.append('attributes', JSON.stringify(attributes));
         
         // Images
@@ -313,6 +302,9 @@ export default function ProductEditPage() {
         }
         if (formData.description !== originalData?.description) {
           updatePayload.description = formData.description;
+        }
+        if (formData.purchasePriceKg !== originalData?.purchasePriceKg) {
+          updatePayload.purchase_price_kg = formData.purchasePriceKg || '0';
         }
         if (formData.purchasePrice !== originalData?.purchasePrice) {
           updatePayload.purchase_price = formData.purchasePrice || '0';
@@ -363,12 +355,10 @@ export default function ProductEditPage() {
           updatePayload.is_featured = formData.isFeatured;
         }
 
-        // Check attributes for changes - only send if any attribute changed
+        // Check attributes for changes
         const attributesChanged = 
           formData.ingredients !== originalData?.ingredients ||
-          formData.usage !== originalData?.usage ||
-          formData.variant_name !== originalData?.variant_name ||
-          formData.variant_value !== originalData?.variant_value;
+          formData.usage !== originalData?.usage;
 
         if (attributesChanged) {
           const attributes: Record<string, any> = {};
@@ -377,11 +367,6 @@ export default function ProductEditPage() {
           }
           if (formData.usage !== originalData?.usage) {
             attributes.usage = formData.usage;
-          }
-          if (formData.variant_name !== originalData?.variant_name || formData.variant_value !== originalData?.variant_value) {
-            attributes.variants = formData.variant_name || formData.variant_value
-              ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
-              : [];
           }
           updatePayload.attributes = attributes;
         }
@@ -581,12 +566,25 @@ export default function ProductEditPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {isAdmin && (
                   <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">Закупочная цена</Label>
+                    <Label htmlFor="purchasePrice">Закупка ₽</Label>
                     <Input
                       id="purchasePrice"
                       type="number"
                       value={formData.purchasePrice}
                       onChange={(e) => handleChange('purchasePrice', e.target.value)}
+                      placeholder="0"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="purchasePriceKg">Закупка KG</Label>
+                    <Input
+                      id="purchasePriceKg"
+                      type="number"
+                      value={formData.purchasePriceKg}
+                      onChange={(e) => handleChange('purchasePriceKg', e.target.value)}
                       placeholder="0"
                       disabled={!canEdit}
                     />
@@ -611,17 +609,6 @@ export default function ProductEditPage() {
                     value={formData.discountPrice}
                     onChange={(e) => handleChange('discountPrice', e.target.value)}
                     placeholder="Опционально"
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stockQuantity">Количество</Label>
-                  <Input
-                    id="stockQuantity"
-                    type="number"
-                    value={formData.stockQuantity}
-                    onChange={(e) => handleChange('stockQuantity', e.target.value)}
-                    placeholder="0"
                     disabled={!canEdit}
                   />
                 </div>
@@ -799,12 +786,28 @@ export default function ProductEditPage() {
               <CardTitle>Статус</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Наличие</span>
-                <span className="text-sm text-muted-foreground">
-                  {(Number(formData.stockQuantity) || 0) > 0 ? 'В наличии' : 'Нет'}
-                </span>
-              </div>
+              {product && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Склад РУ</span>
+                    <span className={cn('text-sm font-medium', product.inStockRu ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityRu} шт
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Склад KG</span>
+                    <span className={cn('text-sm font-medium', product.inStockKg ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityKg} шт
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Всего</span>
+                    <span className={cn('text-sm font-medium', product.inStockTotal ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityTotal} шт
+                    </span>
+                  </div>
+                </>
+              )}
               <Separator />
               <div className="flex items-center justify-between">
                 <Label htmlFor="isNew">Новинка</Label>
