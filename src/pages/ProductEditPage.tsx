@@ -189,14 +189,14 @@ export default function ProductEditPage() {
         skin_type: data.skin_type || '',
         ingredients: data.ingredients || '',
         usage: data.usage || '',
-        variant_name: data.variants?.[0]?.name || '',
-        variant_value: data.variants?.[0]?.value || '',
+        variant_name: '',
+        variant_value: '',
         isNew: data.isNew ?? false,
         isBestseller: data.isBestseller ?? false,
         isFeatured: data.isFeatured ?? false,
         meta_title: data.meta_title || '',
         meta_description: data.meta_description || '',
-        stockQuantity: data.stockQuantity?.toString() || '',
+        stockQuantity: data.stockQuantityTotal?.toString() || '',
       });
       setStockVariants(data.stockVariants || []);
       // Set existing gallery images

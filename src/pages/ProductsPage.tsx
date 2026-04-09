@@ -27,8 +27,8 @@ export default function ProductsPage() {
   const tableRef = useRef<HTMLDivElement>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [_brands, setBrands] = useState<Brand[]>([]);
+  const [_categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -47,8 +47,6 @@ export default function ProductsPage() {
 
   const [filters, setFilters] = useState<ProductFilters>(getInitialFilters);
   const [searchTerm, setSearchTerm] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams();

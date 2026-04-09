@@ -12,8 +12,8 @@ interface CatalogProduct {
   price: string;
   discountPrice: string | null;
   brand: string;
-  inStock: boolean;
-  stockQuantity: number | null;
+  inStockTotal: boolean;
+  stockQuantityTotal: number;
 }
 
 interface PosCatalogProps {

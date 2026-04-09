@@ -59,8 +59,8 @@ interface SearchProduct {
   price: string;
   discountPrice: string | null;
   brand: string;
-  inStock: boolean;
-  stockQuantity: number | null;
+  inStockTotal: boolean;
+  stockQuantityTotal: number;
 }
 
 export default function PosCheckout() {
