@@ -566,12 +566,25 @@ export default function ProductEditPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {isAdmin && (
                   <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">Закупочная цена</Label>
+                    <Label htmlFor="purchasePrice">Закупка ₽</Label>
                     <Input
                       id="purchasePrice"
                       type="number"
                       value={formData.purchasePrice}
                       onChange={(e) => handleChange('purchasePrice', e.target.value)}
+                      placeholder="0"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="purchasePriceKg">Закупка KG</Label>
+                    <Input
+                      id="purchasePriceKg"
+                      type="number"
+                      value={formData.purchasePriceKg}
+                      onChange={(e) => handleChange('purchasePriceKg', e.target.value)}
                       placeholder="0"
                       disabled={!canEdit}
                     />
