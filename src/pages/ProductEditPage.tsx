@@ -797,12 +797,28 @@ export default function ProductEditPage() {
               <CardTitle>Статус</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Наличие</span>
-                <span className="text-sm text-muted-foreground">
-                  {(Number(formData.stockQuantity) || 0) > 0 ? 'В наличии' : 'Нет'}
-                </span>
-              </div>
+              {product && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Склад РУ</span>
+                    <span className={cn('text-sm font-medium', product.inStockRu ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityRu} шт
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Склад KG</span>
+                    <span className={cn('text-sm font-medium', product.inStockKg ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityKg} шт
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Всего</span>
+                    <span className={cn('text-sm font-medium', product.inStockTotal ? 'text-success' : 'text-destructive')}>
+                      {product.stockQuantityTotal} шт
+                    </span>
+                  </div>
+                </>
+              )}
               <Separator />
               <div className="flex items-center justify-between">
                 <Label htmlFor="isNew">Новинка</Label>
