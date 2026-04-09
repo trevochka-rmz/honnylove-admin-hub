@@ -183,8 +183,7 @@ export default function ProductEditPage() {
         skin_type: data.skin_type || '',
         ingredients: data.ingredients || '',
         usage: data.usage || '',
-        variant_name: '',
-        variant_value: '',
+        purchasePriceKg: data.purchasePriceKg || '',
         isNew: data.isNew ?? false,
         isBestseller: data.isBestseller ?? false,
         isFeatured: data.isFeatured ?? false,
@@ -282,10 +281,6 @@ export default function ProductEditPage() {
         const attributes: Record<string, any> = {};
         if (formData.ingredients) attributes.ingredients = formData.ingredients;
         if (formData.usage) attributes.usage = formData.usage;
-        attributes.variants = [{ 
-          name: formData.variant_name || 'Объём', 
-          value: formData.variant_value || '50мл' 
-        }];
         fd.append('attributes', JSON.stringify(attributes));
         
         // Images
@@ -357,12 +352,10 @@ export default function ProductEditPage() {
           updatePayload.is_featured = formData.isFeatured;
         }
 
-        // Check attributes for changes - only send if any attribute changed
+        // Check attributes for changes
         const attributesChanged = 
           formData.ingredients !== originalData?.ingredients ||
-          formData.usage !== originalData?.usage ||
-          formData.variant_name !== originalData?.variant_name ||
-          formData.variant_value !== originalData?.variant_value;
+          formData.usage !== originalData?.usage;
 
         if (attributesChanged) {
           const attributes: Record<string, any> = {};
@@ -371,11 +364,6 @@ export default function ProductEditPage() {
           }
           if (formData.usage !== originalData?.usage) {
             attributes.usage = formData.usage;
-          }
-          if (formData.variant_name !== originalData?.variant_name || formData.variant_value !== originalData?.variant_value) {
-            attributes.variants = formData.variant_name || formData.variant_value
-              ? [{ name: formData.variant_name || 'Объём', value: formData.variant_value || '' }]
-              : [];
           }
           updatePayload.attributes = attributes;
         }
