@@ -303,6 +303,9 @@ export default function ProductEditPage() {
         if (formData.description !== originalData?.description) {
           updatePayload.description = formData.description;
         }
+        if (formData.purchasePriceKg !== originalData?.purchasePriceKg) {
+          updatePayload.purchase_price_kg = formData.purchasePriceKg || '0';
+        }
         if (formData.purchasePrice !== originalData?.purchasePrice) {
           updatePayload.purchase_price = formData.purchasePrice || '0';
         }
