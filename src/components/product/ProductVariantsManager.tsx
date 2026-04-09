@@ -9,30 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, Loader2, Package, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,28 +31,28 @@ interface Props {
 
 interface VariantFormData {
   name: string;
-  options: Record<string, string>;
   optionKeys: string[];
   optionValues: string[];
   priceOverride: string;
   discountOverride: string;
   priceOverrideKg: string;
   discountOverrideKg: string;
-  stockQuantity: string;
+  purchasePrice: string;
+  purchasePriceKg: string;
   isAvailable: boolean;
   sortOrder: string;
 }
 
 const emptyForm: VariantFormData = {
   name: '',
-  options: {},
   optionKeys: [''],
   optionValues: [''],
   priceOverride: '',
   discountOverride: '',
   priceOverrideKg: '',
   discountOverrideKg: '',
-  stockQuantity: '0',
+  purchasePrice: '',
+  purchasePriceKg: '',
   isAvailable: true,
   sortOrder: '0',
 };
@@ -98,14 +82,14 @@ export default function ProductVariantsManager({ productId, variants, onVariants
     setEditingVariant(v);
     setForm({
       name: v.name,
-      options: v.options,
       optionKeys: keys.length > 0 ? keys : [''],
       optionValues: vals.length > 0 ? vals : [''],
       priceOverride: v.price?.toString() || '',
       discountOverride: v.discountPrice?.toString() || '',
       priceOverrideKg: v.priceKg?.toString() || '',
       discountOverrideKg: v.discountPriceKg?.toString() || '',
-      stockQuantity: v.stockQuantity?.toString() || '0',
+      purchasePrice: v.purchasePrice?.toString() || '',
+      purchasePriceKg: v.purchasePriceKg?.toString() || '',
       isAvailable: v.isAvailable ?? true,
       sortOrder: v.sortOrder?.toString() || '0',
     });
@@ -152,7 +136,6 @@ export default function ProductVariantsManager({ productId, variants, onVariants
       const fd = new FormData();
       fd.append('name', form.name);
 
-      // Build options object
       const options: Record<string, string> = {};
       form.optionKeys.forEach((key, i) => {
         if (key.trim() && form.optionValues[i]?.trim()) {
@@ -165,7 +148,8 @@ export default function ProductVariantsManager({ productId, variants, onVariants
       if (form.discountOverride) fd.append('discountOverride', form.discountOverride);
       if (form.priceOverrideKg) fd.append('priceOverrideKg', form.priceOverrideKg);
       if (form.discountOverrideKg) fd.append('discountOverrideKg', form.discountOverrideKg);
-      if (form.stockQuantity) fd.append('stockQuantity', form.stockQuantity);
+      if (form.purchasePrice) fd.append('purchasePrice', form.purchasePrice);
+      if (form.purchasePriceKg) fd.append('purchasePriceKg', form.purchasePriceKg);
       fd.append('isAvailable', form.isAvailable ? 'true' : 'false');
       fd.append('sortOrder', form.sortOrder || '0');
 
@@ -180,7 +164,6 @@ export default function ProductVariantsManager({ productId, variants, onVariants
         toast({ title: 'Успешно', description: 'Вариант создан' });
       }
 
-      // Reload variants
       const updated = await api.getProductVariants(productId);
       onVariantsChange(updated);
       setIsDialogOpen(false);
@@ -210,7 +193,9 @@ export default function ProductVariantsManager({ productId, variants, onVariants
     }
   };
 
-  const totalStock = variants.reduce((sum, v) => sum + (v.stockQuantity || 0), 0);
+  const totalRu = variants.reduce((sum, v) => sum + (v.stockQuantityRu || 0), 0);
+  const totalKg = variants.reduce((sum, v) => sum + (v.stockQuantityKg || 0), 0);
+  const totalAll = variants.reduce((sum, v) => sum + (v.stockQuantityTotal || 0), 0);
 
   return (
     <Card>
@@ -218,13 +203,12 @@ export default function ProductVariantsManager({ productId, variants, onVariants
         <div>
           <CardTitle>Варианты товара</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            {variants.length} вариантов • Общий остаток: {totalStock}
+            {variants.length} вариантов • РУ: {totalRu} • KG: {totalKg} • Всего: {totalAll}
           </p>
         </div>
         {canEdit && (
           <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить
+            <Plus className="mr-2 h-4 w-4" />Добавить
           </Button>
         )}
       </CardHeader>
@@ -244,7 +228,9 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                   <TableHead>Опции</TableHead>
                   <TableHead className="text-right">Цена ₽</TableHead>
                   <TableHead className="text-right">Цена KG</TableHead>
-                  <TableHead className="text-center">Остаток</TableHead>
+                  <TableHead className="text-center">РУ</TableHead>
+                  <TableHead className="text-center">KG</TableHead>
+                  <TableHead className="text-center">Всего</TableHead>
                   <TableHead className="text-center">Статус</TableHead>
                   {canEdit && <TableHead className="w-20" />}
                 </TableRow>
@@ -270,9 +256,7 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {Object.entries(v.options).map(([key, val]) => (
-                          <Badge key={key} variant="secondary" className="text-xs">
-                            {key}: {val}
-                          </Badge>
+                          <Badge key={key} variant="secondary" className="text-xs">{key}: {val}</Badge>
                         ))}
                       </div>
                     </TableCell>
@@ -297,19 +281,35 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                     <TableCell className="text-center">
                       <span className={cn(
                         'font-medium',
-                        v.stockQuantity === 0 && 'text-destructive',
-                        v.stockQuantity > 0 && v.stockQuantity <= 5 && 'text-warning',
-                        v.stockQuantity > 5 && 'text-success',
-                      )}>
-                        {v.stockQuantity}
-                      </span>
+                        v.stockQuantityRu === 0 && 'text-destructive',
+                        v.stockQuantityRu > 0 && v.stockQuantityRu <= 5 && 'text-warning',
+                        v.stockQuantityRu > 5 && 'text-success',
+                      )}>{v.stockQuantityRu}</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      {v.inStock ? (
-                        <Badge variant="outline" className="text-success border-success text-xs">В наличии</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-destructive border-destructive text-xs">Нет</Badge>
-                      )}
+                      <span className={cn(
+                        'font-medium',
+                        v.stockQuantityKg === 0 && 'text-destructive',
+                        v.stockQuantityKg > 0 && v.stockQuantityKg <= 5 && 'text-warning',
+                        v.stockQuantityKg > 5 && 'text-success',
+                      )}>{v.stockQuantityKg}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={cn(
+                        'font-medium',
+                        v.stockQuantityTotal === 0 && 'text-destructive',
+                        v.stockQuantityTotal > 0 && v.stockQuantityTotal <= 5 && 'text-warning',
+                        v.stockQuantityTotal > 5 && 'text-success',
+                      )}>{v.stockQuantityTotal}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex flex-col gap-0.5 items-center">
+                        {v.inStockRu && <Badge variant="outline" className="text-success border-success text-[10px]">РУ</Badge>}
+                        {v.inStockKg && <Badge variant="outline" className="text-success border-success text-[10px]">KG</Badge>}
+                        {!v.inStockRu && !v.inStockKg && (
+                          <Badge variant="outline" className="text-destructive border-destructive text-xs">Нет</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     {canEdit && (
                       <TableCell>
@@ -326,9 +326,7 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Удалить вариант?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Вариант «{v.name}» будет деактивирован.
-                                </AlertDialogDescription>
+                                <AlertDialogDescription>Вариант «{v.name}» будет деактивирован.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Отмена</AlertDialogCancel>
@@ -369,18 +367,8 @@ export default function ProductVariantsManager({ productId, variants, onVariants
               <Label>Опции (размер, цвет и т.д.)</Label>
               {form.optionKeys.map((key, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Input
-                    value={key}
-                    onChange={(e) => handleOptionChange(i, 'key', e.target.value)}
-                    placeholder="Ключ (Размер)"
-                    className="flex-1"
-                  />
-                  <Input
-                    value={form.optionValues[i] || ''}
-                    onChange={(e) => handleOptionChange(i, 'value', e.target.value)}
-                    placeholder="Значение (XS)"
-                    className="flex-1"
-                  />
+                  <Input value={key} onChange={(e) => handleOptionChange(i, 'key', e.target.value)} placeholder="Ключ (Размер)" className="flex-1" />
+                  <Input value={form.optionValues[i] || ''} onChange={(e) => handleOptionChange(i, 'value', e.target.value)} placeholder="Значение (XS)" className="flex-1" />
                   {form.optionKeys.length > 1 && (
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeOption(i)}>
                       <Trash2 className="h-3.5 w-3.5" />
@@ -394,69 +382,52 @@ export default function ProductVariantsManager({ productId, variants, onVariants
             </div>
 
             {/* Prices */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Цена ₽</Label>
-                <Input
-                  type="number"
-                  value={form.priceOverride}
-                  onChange={(e) => setForm(prev => ({ ...prev, priceOverride: e.target.value }))}
-                  placeholder="Цена товара"
-                />
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Цены</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Цена ₽</Label>
+                  <Input type="number" value={form.priceOverride} onChange={(e) => setForm(prev => ({ ...prev, priceOverride: e.target.value }))} placeholder="Цена" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Скидка ₽</Label>
+                  <Input type="number" value={form.discountOverride} onChange={(e) => setForm(prev => ({ ...prev, discountOverride: e.target.value }))} placeholder="0" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Цена KG (сом)</Label>
+                  <Input type="number" value={form.priceOverrideKg} onChange={(e) => setForm(prev => ({ ...prev, priceOverrideKg: e.target.value }))} placeholder="0" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Скидка KG (сом)</Label>
+                  <Input type="number" value={form.discountOverrideKg} onChange={(e) => setForm(prev => ({ ...prev, discountOverrideKg: e.target.value }))} placeholder="0" />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Скидка ₽</Label>
-                <Input
-                  type="number"
-                  value={form.discountOverride}
-                  onChange={(e) => setForm(prev => ({ ...prev, discountOverride: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Цена KG (сом)</Label>
-                <Input
-                  type="number"
-                  value={form.priceOverrideKg}
-                  onChange={(e) => setForm(prev => ({ ...prev, priceOverrideKg: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Скидка KG (сом)</Label>
-                <Input
-                  type="number"
-                  value={form.discountOverrideKg}
-                  onChange={(e) => setForm(prev => ({ ...prev, discountOverrideKg: e.target.value }))}
-                  placeholder="0"
-                />
+            </div>
+
+            {/* Purchase prices */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Закупочные цены</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Закупка ₽</Label>
+                  <Input type="number" value={form.purchasePrice} onChange={(e) => setForm(prev => ({ ...prev, purchasePrice: e.target.value }))} placeholder="0" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Закупка KG (сом)</Label>
+                  <Input type="number" value={form.purchasePriceKg} onChange={(e) => setForm(prev => ({ ...prev, purchasePriceKg: e.target.value }))} placeholder="0" />
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Кол-во на складе</Label>
-                <Input
-                  type="number"
-                  value={form.stockQuantity}
-                  onChange={(e) => setForm(prev => ({ ...prev, stockQuantity: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1">
                 <Label className="text-xs">Порядок сортировки</Label>
-                <Input
-                  type="number"
-                  value={form.sortOrder}
-                  onChange={(e) => setForm(prev => ({ ...prev, sortOrder: e.target.value }))}
-                />
+                <Input type="number" value={form.sortOrder} onChange={(e) => setForm(prev => ({ ...prev, sortOrder: e.target.value }))} />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Switch
-                checked={form.isAvailable}
-                onCheckedChange={(v) => setForm(prev => ({ ...prev, isAvailable: v }))}
-              />
+              <Switch checked={form.isAvailable} onCheckedChange={(v) => setForm(prev => ({ ...prev, isAvailable: v }))} />
               <Label>Доступен для покупки</Label>
             </div>
 
@@ -474,27 +445,18 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                   <p className="text-xs text-muted-foreground">Используется фото товара</p>
                 </div>
               )}
-              <Input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) setMainImage(file);
-                }}
-              />
+              <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setMainImage(file);
+              }} />
             </div>
 
             <div className="space-y-2">
               <Label>Галерея (до 2 фото)</Label>
-              <Input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []).slice(0, 2);
-                  setGalleryFiles(files);
-                }}
-              />
+              <Input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => {
+                const files = Array.from(e.target.files || []).slice(0, 2);
+                setGalleryFiles(files);
+              }} />
             </div>
           </div>
 

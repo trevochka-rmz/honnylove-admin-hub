@@ -104,25 +104,37 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export interface StockByLocation {
+  quantity: number;
+  locationId: number;
+  locationName: string | null;
+}
+
 export interface StockVariant {
   id: number;
   sku: string | null;
   name: string;
-  image: string;
+  image: string | null;
   images: string[];
-  isNew: boolean;
+  isNew?: boolean;
   price: number;
   priceKg: number | null;
-  inStock: boolean;
+  purchasePrice: number | null;
+  purchasePriceKg: number | null;
+  inStockRu: boolean;
+  inStockKg: boolean;
   options: Record<string, string>;
   isActive: boolean;
   sortOrder: number;
-  isFeatured: boolean;
-  isAvailable: boolean;
-  isBestseller: boolean;
+  isFeatured?: boolean;
+  isAvailable?: boolean;
+  isBestseller?: boolean;
   discountPrice: number | null;
   discountPriceKg: number | null;
-  stockQuantity: number;
+  stockQuantityRu: number;
+  stockQuantityKg: number;
+  stockQuantityTotal: number;
+  stockByLocation?: StockByLocation[];
 }
 
 export interface Product {
@@ -131,6 +143,7 @@ export interface Product {
   description: string;
   slug: string;
   purchasePrice: string;
+  purchasePriceKg: string | null;
   price: string;
   discountPrice: string | null;
   priceKg: string | null;
@@ -154,12 +167,10 @@ export interface Product {
   images: string[];
   ingredients: string;
   usage: string;
-  variants: { name: string; value: string }[];
-  inStock: boolean;
+  isActive: boolean;
   isNew: boolean;
   isBestseller: boolean;
   isFeatured: boolean;
-  isActive: boolean;
   rating: string;
   reviewCount: number;
   created_at: string;
@@ -175,8 +186,14 @@ export interface Product {
   height_cm: number | null;
   meta_title: string | null;
   meta_description: string | null;
-  stockQuantity: number | null;
-  stockVariants: StockVariant[];
+  variantCount: number;
+  inStockRu: boolean;
+  inStockKg: boolean;
+  inStockTotal: boolean;
+  stockQuantityRu: number;
+  stockQuantityKg: number;
+  stockQuantityTotal: number;
+  stockVariants?: StockVariant[];
 }
 
 export interface ProductsResponse {

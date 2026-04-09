@@ -5,34 +5,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Product, Brand, Category, ProductFilters } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Plus,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Package,
-  Download,
-  FileText,
+  Plus, Search, ChevronLeft, ChevronRight, Loader2, Package, Download, FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +35,6 @@ export default function ProductsPage() {
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
 
-  // Initialize filters from URL params
   const getInitialFilters = useCallback((): ProductFilters => {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const sort = searchParams.get('sort') || undefined;
@@ -64,13 +46,10 @@ export default function ProductsPage() {
   }, [searchParams]);
 
   const [filters, setFilters] = useState<ProductFilters>(getInitialFilters);
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
-  // Sync filters to URL
   useEffect(() => {
     const params = new URLSearchParams();
     if (filters.page && filters.page > 1) params.set('page', filters.page.toString());
@@ -93,7 +72,6 @@ export default function ProductsPage() {
     const firstLoad = !hasLoadedRef.current;
     if (firstLoad) setIsLoading(true);
     else setIsFetching(true);
-
     try {
       const response = await api.getProducts(filters);
       setProducts(response.products);
@@ -101,11 +79,7 @@ export default function ProductsPage() {
       setPages(response.pages);
       hasLoadedRef.current = true;
     } catch (error) {
-      toast({
-        title: 'Ошибка загрузки',
-        description: 'Не удалось загрузить товары',
-        variant: 'destructive',
-      });
+      toast({ title: 'Ошибка загрузки', description: 'Не удалось загрузить товары', variant: 'destructive' });
     } finally {
       setIsLoading(false);
       setIsFetching(false);
@@ -114,40 +88,11 @@ export default function ProductsPage() {
 
   const handleFilterChange = (key: keyof ProductFilters, value: any) => {
     setFilters((prev) => {
-      const next: ProductFilters = {
-        ...prev,
-        [key]: value || undefined,
-      };
-
-      // При изменении фильтров всегда возвращаемся на 1 страницу.
-      // Но при пагинации page должен меняться корректно.
-      if (key !== 'page') {
-        next.page = 1;
-      }
-
-      // Scroll to top when changing page
-      if (key === 'page') {
-        tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
+      const next: ProductFilters = { ...prev, [key]: value || undefined };
+      if (key !== 'page') next.page = 1;
+      if (key === 'page') tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return next;
     });
-  };
-
-  const applyPriceFilter = () => {
-    setFilters((prev) => ({
-      ...prev,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      page: 1,
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({ page: 1, limit: 50 });
-    setSearchTerm('');
-    setMinPrice('');
-    setMaxPrice('');
   };
 
   const filteredProducts = searchTerm
@@ -157,29 +102,6 @@ export default function ProductsPage() {
           p.brand?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : products;
-
-  const flattenCategories = (cats: Category[], level = 0): { id: number; name: string; level: number }[] => {
-    let result: { id: number; name: string; level: number }[] = [];
-    for (const cat of cats) {
-      result.push({ id: cat.id, name: cat.name, level });
-      if (cat.children && cat.children.length > 0) {
-        result = result.concat(flattenCategories(cat.children, level + 1));
-      }
-    }
-    return result;
-  };
-
-  const flatCategories = flattenCategories(categories);
-
-  const hasActiveFilters =
-    filters.brandId ||
-    filters.categoryId ||
-    filters.minPrice ||
-    filters.maxPrice ||
-    filters.isFeatured ||
-    filters.isNew ||
-    filters.isBestseller ||
-    filters.sort;
 
   const handleExportCSV = async () => {
     try {
@@ -194,11 +116,7 @@ export default function ProductsPage() {
       window.URL.revokeObjectURL(url);
       toast({ title: 'Успешно', description: 'CSV файл скачан' });
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось экспортировать CSV',
-        variant: 'destructive',
-      });
+      toast({ title: 'Ошибка', description: 'Не удалось экспортировать CSV', variant: 'destructive' });
     }
   };
 
@@ -215,11 +133,7 @@ export default function ProductsPage() {
       window.URL.revokeObjectURL(url);
       toast({ title: 'Успешно', description: 'PDF файл скачан' });
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось экспортировать PDF',
-        variant: 'destructive',
-      });
+      toast({ title: 'Ошибка', description: 'Не удалось экспортировать PDF', variant: 'destructive' });
     }
   };
 
@@ -231,24 +145,19 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-foreground">Товары</h1>
           <p className="text-muted-foreground flex items-center gap-2">
             Всего {total} товаров
-            {isFetching && !isLoading && (
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            )}
+            {isFetching && !isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="mr-2 h-4 w-4" />
-            CSV
+            <Download className="mr-2 h-4 w-4" />CSV
           </Button>
           <Button variant="outline" onClick={handleExportPDF}>
-            <FileText className="mr-2 h-4 w-4" />
-            PDF
+            <FileText className="mr-2 h-4 w-4" />PDF
           </Button>
           {isAdmin && (
             <Button onClick={() => navigate('/products/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Добавить товар
+              <Plus className="mr-2 h-4 w-4" />Добавить товар
             </Button>
           )}
         </div>
@@ -258,7 +167,6 @@ export default function ProductsPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -268,8 +176,6 @@ export default function ProductsPage() {
                 className="pl-9"
               />
             </div>
-
-            {/* Sort */}
             <Select
               value={filters.sort || ''}
               onValueChange={(value) => handleFilterChange('sort', value || undefined)}
@@ -311,17 +217,20 @@ export default function ProductsPage() {
                     <TableHead className="min-w-[200px]">Название</TableHead>
                     <TableHead>Бренд</TableHead>
                     <TableHead>Категория</TableHead>
-                    {isAdmin && <TableHead className="text-right">Закупка</TableHead>}
-                    <TableHead className="text-right">Цена</TableHead>
+                    {isAdmin && <TableHead className="text-right">Закупка ₽</TableHead>}
+                    {isAdmin && <TableHead className="text-right">Закупка KG</TableHead>}
+                    <TableHead className="text-right">Цена ₽</TableHead>
                     <TableHead className="text-right">Цена KG</TableHead>
                     <TableHead className="text-center">Статус</TableHead>
-                    <TableHead className="text-center">Кол-во</TableHead>
+                    <TableHead className="text-center">РУ</TableHead>
+                    <TableHead className="text-center">KG</TableHead>
+                    <TableHead className="text-center">Всего</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => (
-                    <TableRow 
-                      key={product.id} 
+                    <TableRow
+                      key={product.id}
                       className="group hover:bg-muted/30 cursor-pointer"
                       onClick={() => navigate(`/products/${product.id}`)}
                     >
@@ -329,7 +238,7 @@ export default function ProductsPage() {
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
                           {product.image ? (
                             <img
-                              src={product.image.startsWith('/') ? `${import.meta.env.VITE_API_BASE_URL}${product.image}` : product.image}
+                              src={product.image}
                               alt={product.name}
                               className="w-full h-full object-cover"
                             />
@@ -344,17 +253,24 @@ export default function ProductsPage() {
                         <div className="max-w-[250px]">
                           <p className="font-medium text-foreground truncate">{product.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            ID: {product.id}
+                            ID: {product.id} • Вар: {product.variantCount ?? 0}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>{product.brand}</TableCell>
-                      <TableCell>
-                        <span className="text-sm">{product.category_name}</span>
-                      </TableCell>
+                      <TableCell><span className="text-sm">{product.category_name}</span></TableCell>
                       {isAdmin && (
                         <TableCell className="text-right font-medium">
                           {Number(product.purchasePrice).toLocaleString('ru-RU')} ₽
+                        </TableCell>
+                      )}
+                      {isAdmin && (
+                        <TableCell className="text-right font-medium">
+                          {product.purchasePriceKg ? (
+                            <>{Number(product.purchasePriceKg).toLocaleString('ru-RU')} сом</>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                       )}
                       <TableCell className="text-right">
@@ -387,31 +303,43 @@ export default function ProductsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 justify-center">
-                          {product.inStock ? (
-                            <Badge variant="outline" className="text-success border-success text-xs">
-                              В наличии
-                            </Badge>
+                          {product.inStockTotal ? (
+                            <Badge variant="outline" className="text-success border-success text-xs">В наличии</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-destructive border-destructive text-xs">
-                              Нет
-                            </Badge>
+                            <Badge variant="outline" className="text-destructive border-destructive text-xs">Нет</Badge>
                           )}
-                          {product.isNew && (
-                            <Badge className="bg-primary/10 text-primary text-xs">New</Badge>
-                          )}
-                          {product.isBestseller && (
-                            <Badge className="bg-warning/10 text-warning text-xs">Best</Badge>
-                          )}
+                          {product.isNew && <Badge className="bg-primary/10 text-primary text-xs">New</Badge>}
+                          {product.isBestseller && <Badge className="bg-warning/10 text-warning text-xs">Best</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={cn(
                           'font-medium',
-                          (product.stockQuantity ?? 0) === 0 && 'text-destructive',
-                          (product.stockQuantity ?? 0) > 0 && (product.stockQuantity ?? 0) <= 5 && 'text-warning',
-                          (product.stockQuantity ?? 0) > 5 && 'text-success'
+                          product.stockQuantityRu === 0 && 'text-destructive',
+                          product.stockQuantityRu > 0 && product.stockQuantityRu <= 5 && 'text-warning',
+                          product.stockQuantityRu > 5 && 'text-success'
                         )}>
-                          {product.stockQuantity ?? 0}
+                          {product.stockQuantityRu}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={cn(
+                          'font-medium',
+                          product.stockQuantityKg === 0 && 'text-destructive',
+                          product.stockQuantityKg > 0 && product.stockQuantityKg <= 5 && 'text-warning',
+                          product.stockQuantityKg > 5 && 'text-success'
+                        )}>
+                          {product.stockQuantityKg}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={cn(
+                          'font-medium',
+                          product.stockQuantityTotal === 0 && 'text-destructive',
+                          product.stockQuantityTotal > 0 && product.stockQuantityTotal <= 5 && 'text-warning',
+                          product.stockQuantityTotal > 5 && 'text-success'
+                        )}>
+                          {product.stockQuantityTotal}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -424,24 +352,12 @@ export default function ProductsPage() {
           {/* Pagination */}
           {pages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Страница {filters.page} из {pages}
-              </p>
+              <p className="text-sm text-muted-foreground">Страница {filters.page} из {pages}</p>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleFilterChange('page', (filters.page || 1) - 1)}
-                  disabled={filters.page === 1}
-                >
+                <Button variant="outline" size="sm" onClick={() => handleFilterChange('page', (filters.page || 1) - 1)} disabled={filters.page === 1}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleFilterChange('page', (filters.page || 1) + 1)}
-                  disabled={filters.page === pages}
-                >
+                <Button variant="outline" size="sm" onClick={() => handleFilterChange('page', (filters.page || 1) + 1)} disabled={filters.page === pages}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
