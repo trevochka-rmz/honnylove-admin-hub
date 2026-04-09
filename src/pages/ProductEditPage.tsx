@@ -612,17 +612,6 @@ export default function ProductEditPage() {
                     disabled={!canEdit}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stockQuantity">Количество</Label>
-                  <Input
-                    id="stockQuantity"
-                    type="number"
-                    value={formData.stockQuantity}
-                    onChange={(e) => handleChange('stockQuantity', e.target.value)}
-                    placeholder="0"
-                    disabled={!canEdit}
-                  />
-                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
