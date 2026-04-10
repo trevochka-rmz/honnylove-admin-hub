@@ -35,10 +35,12 @@ interface VariantFormData {
   optionValues: string[];
   priceOverride: string;
   discountOverride: string;
+  purchaseOverride: string;
   priceOverrideKg: string;
   discountOverrideKg: string;
-  purchasePrice: string;
-  purchasePriceKg: string;
+  purchaseOverrideKg: string;
+  stockQuantity: string;
+  stockQuantityKg: string;
   isAvailable: boolean;
   sortOrder: string;
 }
@@ -49,10 +51,12 @@ const emptyForm: VariantFormData = {
   optionValues: [''],
   priceOverride: '',
   discountOverride: '',
+  purchaseOverride: '',
   priceOverrideKg: '',
   discountOverrideKg: '',
-  purchasePrice: '',
-  purchasePriceKg: '',
+  purchaseOverrideKg: '',
+  stockQuantity: '0',
+  stockQuantityKg: '0',
   isAvailable: true,
   sortOrder: '0',
 };
@@ -86,10 +90,12 @@ export default function ProductVariantsManager({ productId, variants, onVariants
       optionValues: vals.length > 0 ? vals : [''],
       priceOverride: v.price?.toString() || '',
       discountOverride: v.discountPrice?.toString() || '',
+      purchaseOverride: v.purchasePrice?.toString() || '',
       priceOverrideKg: v.priceKg?.toString() || '',
       discountOverrideKg: v.discountPriceKg?.toString() || '',
-      purchasePrice: v.purchasePrice?.toString() || '',
-      purchasePriceKg: v.purchasePriceKg?.toString() || '',
+      purchaseOverrideKg: v.purchasePriceKg?.toString() || '',
+      stockQuantity: v.stockQuantityRu?.toString() || '0',
+      stockQuantityKg: v.stockQuantityKg?.toString() || '0',
       isAvailable: v.isAvailable ?? true,
       sortOrder: v.sortOrder?.toString() || '0',
     });
@@ -144,12 +150,15 @@ export default function ProductVariantsManager({ productId, variants, onVariants
       });
       fd.append('options', JSON.stringify(options));
 
+      fd.append('stockQuantity', form.stockQuantity || '0');
+      fd.append('stockQuantityKg', form.stockQuantityKg || '0');
+
       if (form.priceOverride) fd.append('priceOverride', form.priceOverride);
       if (form.discountOverride) fd.append('discountOverride', form.discountOverride);
+      if (form.purchaseOverride) fd.append('purchaseOverride', form.purchaseOverride);
       if (form.priceOverrideKg) fd.append('priceOverrideKg', form.priceOverrideKg);
       if (form.discountOverrideKg) fd.append('discountOverrideKg', form.discountOverrideKg);
-      if (form.purchasePrice) fd.append('purchasePrice', form.purchasePrice);
-      if (form.purchasePriceKg) fd.append('purchasePriceKg', form.purchasePriceKg);
+      if (form.purchaseOverrideKg) fd.append('purchaseOverrideKg', form.purchaseOverrideKg);
       fd.append('isAvailable', form.isAvailable ? 'true' : 'false');
       fd.append('sortOrder', form.sortOrder || '0');
 
@@ -381,18 +390,39 @@ export default function ProductVariantsManager({ productId, variants, onVariants
               </Button>
             </div>
 
+            {/* Stock */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Количество на складах</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Склад РУ</Label>
+                  <Input type="number" value={form.stockQuantity} onChange={(e) => setForm(prev => ({ ...prev, stockQuantity: e.target.value }))} placeholder="0" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Склад KG</Label>
+                  <Input type="number" value={form.stockQuantityKg} onChange={(e) => setForm(prev => ({ ...prev, stockQuantityKg: e.target.value }))} placeholder="0" />
+                </div>
+              </div>
+            </div>
+
             {/* Prices */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Цены</Label>
+              <Label className="text-xs font-semibold">Цены (если отличаются от товара)</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Цена ₽</Label>
-                  <Input type="number" value={form.priceOverride} onChange={(e) => setForm(prev => ({ ...prev, priceOverride: e.target.value }))} placeholder="Цена" />
+                  <Input type="number" value={form.priceOverride} onChange={(e) => setForm(prev => ({ ...prev, priceOverride: e.target.value }))} placeholder="Из товара" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Скидка ₽</Label>
                   <Input type="number" value={form.discountOverride} onChange={(e) => setForm(prev => ({ ...prev, discountOverride: e.target.value }))} placeholder="0" />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Закупка ₽</Label>
+                  <Input type="number" value={form.purchaseOverride} onChange={(e) => setForm(prev => ({ ...prev, purchaseOverride: e.target.value }))} placeholder="Из товара" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Цена KG (сом)</Label>
                   <Input type="number" value={form.priceOverrideKg} onChange={(e) => setForm(prev => ({ ...prev, priceOverrideKg: e.target.value }))} placeholder="0" />
@@ -401,20 +431,9 @@ export default function ProductVariantsManager({ productId, variants, onVariants
                   <Label className="text-xs">Скидка KG (сом)</Label>
                   <Input type="number" value={form.discountOverrideKg} onChange={(e) => setForm(prev => ({ ...prev, discountOverrideKg: e.target.value }))} placeholder="0" />
                 </div>
-              </div>
-            </div>
-
-            {/* Purchase prices */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Закупочные цены</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Закупка ₽</Label>
-                  <Input type="number" value={form.purchasePrice} onChange={(e) => setForm(prev => ({ ...prev, purchasePrice: e.target.value }))} placeholder="0" />
-                </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Закупка KG (сом)</Label>
-                  <Input type="number" value={form.purchasePriceKg} onChange={(e) => setForm(prev => ({ ...prev, purchasePriceKg: e.target.value }))} placeholder="0" />
+                  <Input type="number" value={form.purchaseOverrideKg} onChange={(e) => setForm(prev => ({ ...prev, purchaseOverrideKg: e.target.value }))} placeholder="0" />
                 </div>
               </div>
             </div>
