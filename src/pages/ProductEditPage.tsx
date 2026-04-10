@@ -142,14 +142,17 @@ export default function ProductEditPage() {
     isNew: false,
     isBestseller: false,
     isFeatured: false,
-    meta_title: '',
-    meta_description: '',
+    // For single-variant inline editing & creation
     stockQuantity: '',
+    stockQuantityKg: '',
+    variantOptionKey: 'Объём',
+    variantOptionValue: '',
   });
 
   const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
-
   const [product, setProduct] = useState<Product | null>(null);
+
+  const isSingleVariant = stockVariants.length <= 1;
 
   useEffect(() => {
     Promise.all([api.getBrandsBrief(), api.getCategories()]).then(([brandsRes, categoriesRes]) => {
@@ -167,6 +170,14 @@ export default function ProductEditPage() {
     try {
       const data = await api.getProduct(productId);
       setProduct(data);
+      const variants = data.stockVariants || [];
+      setStockVariants(variants);
+
+      // If single variant, pre-fill stock and options from variant
+      const sv = variants.length === 1 ? variants[0] : null;
+      const optKeys = sv ? Object.keys(sv.options) : [];
+      const optVals = sv ? Object.values(sv.options) : [];
+
       setFormData({
         name: data.name || '',
         description: data.description || '',
@@ -187,12 +198,11 @@ export default function ProductEditPage() {
         isNew: data.isNew ?? false,
         isBestseller: data.isBestseller ?? false,
         isFeatured: data.isFeatured ?? false,
-        meta_title: data.meta_title || '',
-        meta_description: data.meta_description || '',
-        stockQuantity: data.stockQuantityTotal?.toString() || '',
+        stockQuantity: sv ? (sv.stockQuantityRu?.toString() || '0') : (data.stockQuantityRu?.toString() || '0'),
+        stockQuantityKg: sv ? (sv.stockQuantityKg?.toString() || '0') : (data.stockQuantityKg?.toString() || '0'),
+        variantOptionKey: optKeys[0] || 'Объём',
+        variantOptionValue: optVals[0] || '',
       });
-      setStockVariants(data.stockVariants || []);
-      // Set existing gallery images
       if (data.images && data.images.length > 0) {
         setGalleryFiles(data.images);
       }
@@ -226,7 +236,6 @@ export default function ProductEditPage() {
     return findCat(categories) || 'Выберите категорию';
   };
 
-  // Store original data for comparison (to detect changes)
   const [originalData, setOriginalData] = useState<typeof formData | null>(null);
 
   useEffect(() => {
@@ -237,27 +246,24 @@ export default function ProductEditPage() {
 
   const handleSave = async () => {
     if (!isAdmin) {
-      toast({
-        title: 'Ошибка',
-        description: 'У вас нет прав для редактирования',
-        variant: 'destructive',
-      });
+      toast({ title: 'Ошибка', description: 'У вас нет прав для редактирования', variant: 'destructive' });
       return;
     }
 
     if (!formData.name) {
-      toast({
-        title: 'Ошибка',
-        description: 'Введите название товара',
-        variant: 'destructive',
-      });
+      toast({ title: 'Ошибка', description: 'Введите название товара', variant: 'destructive' });
       return;
     }
 
     setIsSaving(true);
     try {
       if (isNew) {
-        // For new products, send all fields via FormData
+        if (!formData.variantOptionKey || !formData.variantOptionValue) {
+          toast({ title: 'Ошибка', description: 'Укажите опцию варианта (например Объём: 100 мл)', variant: 'destructive' });
+          setIsSaving(false);
+          return;
+        }
+
         const fd = new FormData();
         fd.append('name', formData.name);
         fd.append('retail_price', formData.price || '0');
@@ -267,23 +273,28 @@ export default function ProductEditPage() {
         fd.append('product_type', formData.product_type);
         if (formData.description) fd.append('description', formData.description);
         if (formData.discountPrice) fd.append('discount_price', formData.discountPrice);
+        if (formData.priceKg) fd.append('retail_price_kg', formData.priceKg);
+        if (formData.discountPriceKg) fd.append('discount_price_kg', formData.discountPriceKg);
         if (formData.target_audience) fd.append('target_audience', formData.target_audience);
         if (formData.skin_type) fd.append('skin_type', formData.skin_type);
-        if (formData.stockQuantity) fd.append('stockQuantity', formData.stockQuantity);
-        if (formData.meta_title) fd.append('meta_title', formData.meta_title);
-        if (formData.meta_description) fd.append('meta_description', formData.meta_description);
+        fd.append('stockQuantity', formData.stockQuantity || '0');
+        fd.append('stockQuantityKg', formData.stockQuantityKg || '0');
+
+        // variantOptions - required
+        const variantOptions: Record<string, string> = {};
+        variantOptions[formData.variantOptionKey] = formData.variantOptionValue;
+        fd.append('variantOptions', JSON.stringify(variantOptions));
+
         fd.append('is_active', 'true');
         fd.append('is_new', formData.isNew ? 'true' : 'false');
         fd.append('is_bestseller', formData.isBestseller ? 'true' : 'false');
         fd.append('is_featured', formData.isFeatured ? 'true' : 'false');
         
-        // Build attributes as JSON string
         const attributes: Record<string, any> = {};
         if (formData.ingredients) attributes.ingredients = formData.ingredients;
         if (formData.usage) attributes.usage = formData.usage;
         fd.append('attributes', JSON.stringify(attributes));
         
-        // Images
         if (mainImage) fd.append('mainImage', mainImage);
         const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
         galleryFilesOnly.forEach((file) => fd.append('gallery', file));
@@ -291,83 +302,43 @@ export default function ProductEditPage() {
         await api.createProductWithImages(fd);
         toast({ title: 'Успешно', description: 'Товар создан' });
       } else if (id) {
-        // Update existing product - only send changed fields
-        
-        // Build the update payload with only changed fields
         const updatePayload: Record<string, any> = {};
         
-        // Compare each field with original and only add if changed
-        if (formData.name !== originalData?.name) {
-          updatePayload.name = formData.name;
-        }
-        if (formData.description !== originalData?.description) {
-          updatePayload.description = formData.description;
-        }
-        if (formData.purchasePriceKg !== originalData?.purchasePriceKg) {
-          updatePayload.purchase_price_kg = formData.purchasePriceKg || '0';
-        }
-        if (formData.purchasePrice !== originalData?.purchasePrice) {
-          updatePayload.purchase_price = formData.purchasePrice || '0';
-        }
-        if (formData.price !== originalData?.price) {
-          updatePayload.retail_price = formData.price || '0';
-        }
-        if (formData.discountPrice !== originalData?.discountPrice) {
-          updatePayload.discount_price = formData.discountPrice || '';
-        }
-        if (formData.priceKg !== originalData?.priceKg) {
-          updatePayload.price_kg = formData.priceKg || '';
-        }
-        if (formData.discountPriceKg !== originalData?.discountPriceKg) {
-          updatePayload.discount_price_kg = formData.discountPriceKg || '';
-        }
-        if (formData.brand_id !== originalData?.brand_id) {
-          updatePayload.brand_id = formData.brand_id;
-        }
-        if (formData.category_id !== originalData?.category_id) {
-          updatePayload.category_id = formData.category_id;
-        }
-        if (formData.product_type !== originalData?.product_type) {
-          updatePayload.product_type = formData.product_type;
-        }
-        if (formData.target_audience !== originalData?.target_audience) {
-          updatePayload.target_audience = formData.target_audience;
-        }
-        if (formData.skin_type !== originalData?.skin_type) {
-          updatePayload.skin_type = formData.skin_type;
-        }
-        if (formData.stockQuantity !== originalData?.stockQuantity) {
-          updatePayload.stockQuantity = formData.stockQuantity;
-        }
-        if (formData.meta_title !== originalData?.meta_title) {
-          updatePayload.meta_title = formData.meta_title;
-        }
-        if (formData.meta_description !== originalData?.meta_description) {
-          updatePayload.meta_description = formData.meta_description;
-        }
-        if (formData.isNew !== originalData?.isNew) {
-          updatePayload.is_new = formData.isNew;
-        }
-        if (formData.isBestseller !== originalData?.isBestseller) {
-          updatePayload.is_bestseller = formData.isBestseller;
-        }
-        if (formData.isFeatured !== originalData?.isFeatured) {
-          updatePayload.is_featured = formData.isFeatured;
+        if (formData.name !== originalData?.name) updatePayload.name = formData.name;
+        if (formData.description !== originalData?.description) updatePayload.description = formData.description;
+        if (formData.purchasePriceKg !== originalData?.purchasePriceKg) updatePayload.purchase_price_kg = formData.purchasePriceKg || '0';
+        if (formData.purchasePrice !== originalData?.purchasePrice) updatePayload.purchase_price = formData.purchasePrice || '0';
+        if (formData.price !== originalData?.price) updatePayload.retail_price = formData.price || '0';
+        if (formData.discountPrice !== originalData?.discountPrice) updatePayload.discount_price = formData.discountPrice || '';
+        if (formData.priceKg !== originalData?.priceKg) updatePayload.price_kg = formData.priceKg || '';
+        if (formData.discountPriceKg !== originalData?.discountPriceKg) updatePayload.discount_price_kg = formData.discountPriceKg || '';
+        if (formData.brand_id !== originalData?.brand_id) updatePayload.brand_id = formData.brand_id;
+        if (formData.category_id !== originalData?.category_id) updatePayload.category_id = formData.category_id;
+        if (formData.product_type !== originalData?.product_type) updatePayload.product_type = formData.product_type;
+        if (formData.target_audience !== originalData?.target_audience) updatePayload.target_audience = formData.target_audience;
+        if (formData.skin_type !== originalData?.skin_type) updatePayload.skin_type = formData.skin_type;
+        if (formData.isNew !== originalData?.isNew) updatePayload.is_new = formData.isNew;
+        if (formData.isBestseller !== originalData?.isBestseller) updatePayload.is_bestseller = formData.isBestseller;
+        if (formData.isFeatured !== originalData?.isFeatured) updatePayload.is_featured = formData.isFeatured;
+
+        // Single variant: send stock and variantOptions via product update
+        if (isSingleVariant) {
+          if (formData.stockQuantity !== originalData?.stockQuantity) updatePayload.stockQuantity = formData.stockQuantity;
+          if (formData.stockQuantityKg !== originalData?.stockQuantityKg) updatePayload.stockQuantityKg = formData.stockQuantityKg;
+          if (formData.variantOptionKey !== originalData?.variantOptionKey || formData.variantOptionValue !== originalData?.variantOptionValue) {
+            const variantOptions: Record<string, string> = {};
+            if (formData.variantOptionKey && formData.variantOptionValue) {
+              variantOptions[formData.variantOptionKey] = formData.variantOptionValue;
+            }
+            updatePayload.variantOptions = JSON.stringify(variantOptions);
+          }
         }
 
-        // Check attributes for changes
-        const attributesChanged = 
-          formData.ingredients !== originalData?.ingredients ||
-          formData.usage !== originalData?.usage;
-
+        const attributesChanged = formData.ingredients !== originalData?.ingredients || formData.usage !== originalData?.usage;
         if (attributesChanged) {
           const attributes: Record<string, any> = {};
-          if (formData.ingredients !== originalData?.ingredients) {
-            attributes.ingredients = formData.ingredients;
-          }
-          if (formData.usage !== originalData?.usage) {
-            attributes.usage = formData.usage;
-          }
+          if (formData.ingredients !== originalData?.ingredients) attributes.ingredients = formData.ingredients;
+          if (formData.usage !== originalData?.usage) attributes.usage = formData.usage;
           updatePayload.attributes = attributes;
         }
 
@@ -377,9 +348,7 @@ export default function ProductEditPage() {
         if (!hasFieldChanges && !hasNewImages) {
           toast({ title: 'Информация', description: 'Нет изменений для сохранения' });
         } else {
-          // Always use FormData (backend requires multipart/form-data)
           const fd = new FormData();
-          
           for (const [key, value] of Object.entries(updatePayload)) {
             if (key === 'attributes') {
               fd.append('attributes', JSON.stringify(value));
@@ -389,15 +358,11 @@ export default function ProductEditPage() {
               fd.append(key, String(value));
             }
           }
-          
-          if (mainImage) {
-            fd.append('mainImage', mainImage);
-          }
+          if (mainImage) fd.append('mainImage', mainImage);
           const galleryFilesOnly = galleryFiles.filter((f): f is File => f instanceof File);
           if (galleryFilesOnly.length > 0) {
             galleryFilesOnly.forEach((file) => fd.append('gallery', file));
           }
-          
           await api.updateProductWithImages(id, fd);
           toast({ title: 'Успешно', description: 'Товар обновлен' });
         }
@@ -591,7 +556,7 @@ export default function ProductEditPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="price">Розничная цена ₽</Label>
+                  <Label htmlFor="price">Розничная цена ₽ *</Label>
                   <Input
                     id="price"
                     type="number"
@@ -637,6 +602,60 @@ export default function ProductEditPage() {
                   />
                 </div>
               </div>
+
+              {/* Inline stock & variant option for single-variant products */}
+              {(isNew || isSingleVariant) && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold">
+                      {isNew ? 'Вариант и количество' : 'Количество на складах (1 вариант)'}
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Опция (напр. Объём, Размер) *</Label>
+                        <Input
+                          value={formData.variantOptionKey}
+                          onChange={(e) => handleChange('variantOptionKey', e.target.value)}
+                          placeholder="Объём"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Значение *</Label>
+                        <Input
+                          value={formData.variantOptionValue}
+                          onChange={(e) => handleChange('variantOptionValue', e.target.value)}
+                          placeholder="100 мл"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Количество РУ</Label>
+                        <Input
+                          type="number"
+                          value={formData.stockQuantity}
+                          onChange={(e) => handleChange('stockQuantity', e.target.value)}
+                          placeholder="0"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Количество KG</Label>
+                        <Input
+                          type="number"
+                          value={formData.stockQuantityKg}
+                          onChange={(e) => handleChange('stockQuantityKg', e.target.value)}
+                          placeholder="0"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -717,40 +736,10 @@ export default function ProductEditPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>SEO</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="meta_title">Meta Title</Label>
-                <Input
-                  id="meta_title"
-                  value={formData.meta_title}
-                  onChange={(e) => handleChange('meta_title', e.target.value)}
-                  placeholder="SEO заголовок"
-                  disabled={!canEdit}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="meta_description">Meta Description</Label>
-                <Textarea
-                  id="meta_description"
-                  value={formData.meta_description}
-                  onChange={(e) => handleChange('meta_description', e.target.value)}
-                  placeholder="SEO описание"
-                  rows={2}
-                  disabled={!canEdit}
-                />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Main Image Upload */}
           <Card>
             <CardHeader>
               <CardTitle>Главное изображение</CardTitle>
@@ -765,7 +754,6 @@ export default function ProductEditPage() {
             </CardContent>
           </Card>
 
-          {/* Gallery */}
           <Card>
             <CardHeader>
               <CardTitle>Галерея</CardTitle>
@@ -780,7 +768,6 @@ export default function ProductEditPage() {
             </CardContent>
           </Card>
 
-          {/* Status Toggles */}
           <Card>
             <CardHeader>
               <CardTitle>Статус</CardTitle>
