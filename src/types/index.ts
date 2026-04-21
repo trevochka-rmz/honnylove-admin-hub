@@ -345,3 +345,28 @@ export interface BlogsResponse {
   limit: number;
   hasMore: boolean;
 }
+
+export interface UsersStats {
+  totalUsers: number;
+  verifiedUsers: number;
+  customerCount: number;
+  adminCount: number;
+  managerCount: number;
+}
+
+export interface UsersResponse {
+  users: User[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+  hasMore: boolean;
+  stats: UsersStats;
+}
+
+export interface UserFilters {
+  page?: number;
+  limit?: number;
+  role?: 'customer' | 'admin' | 'manager' | '';
+  search?: string;
+}

@@ -1,4 +1,5 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters, StockVariant } from '@/types';
+import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters, StockVariant, UsersResponse, UserFilters } from '@/types';
+import { toast } from 'sonner';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -76,6 +77,10 @@ class ApiClient {
         errorMessage = error.error || error.message || errorMessage;
       } catch {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      // Global error notification
+      if (response.status !== 401) {
+        toast.error(errorMessage);
       }
       throw new Error(errorMessage);
     }
