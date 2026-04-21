@@ -1,4 +1,5 @@
-import type { AuthResponse, ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters, StockVariant } from '@/types';
+import type { ProductsResponse, Product, BrandsResponse, CategoriesResponse, ProductFilters, BrandDetail, CategoryDetailResponse, CreateCategoryResponse, User, BlogsResponse, BlogPost, Order, OrdersResponse, OrderFilters, OrderStatusesResponse, BrandFilters, StockVariant, UsersResponse, UserFilters } from '@/types';
+import { toast } from 'sonner';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -77,10 +78,31 @@ class ApiClient {
       } catch {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
+      // Global error notification
+      if (response.status !== 401) {
+        toast.error(errorMessage);
+      }
       throw new Error(errorMessage);
     }
 
     return response.json();
+  }
+
+  /**
+   * Throw a friendly error from a non-OK Response and show a global toast.
+   */
+  private async throwFromResponse(response: Response, fallback = 'Request failed'): Promise<never> {
+    let errorMessage = fallback;
+    try {
+      const error = await response.json();
+      errorMessage = error.error || error.message || fallback;
+    } catch {
+      errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    }
+    if (response.status !== 401) {
+      toast.error(errorMessage);
+    }
+    throw new Error(errorMessage);
   }
 
   // ── Auth ──────────────────────────────────────────────
@@ -171,8 +193,7 @@ class ApiClient {
   async deleteProduct(id: string): Promise<void> {
     const response = await this.fetchWithRefresh(`${API_BASE}/products/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 
@@ -182,8 +203,7 @@ class ApiClient {
       body: formData,
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -194,8 +214,7 @@ class ApiClient {
       body: formData,
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -203,8 +222,7 @@ class ApiClient {
   async exportProductsCSV(): Promise<Blob> {
     const response = await this.fetchWithRefresh(`${API_BASE}/products/export/csv`, { method: 'GET' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Export failed' }));
-      throw new Error(error.error || error.message || 'Export failed');
+      await this.throwFromResponse(response, 'Export failed');
     }
     return response.blob();
   }
@@ -212,8 +230,7 @@ class ApiClient {
   async exportProductsPDF(): Promise<Blob> {
     const response = await this.fetchWithRefresh(`${API_BASE}/products/export/pdf`, { method: 'GET' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Export failed' }));
-      throw new Error(error.error || error.message || 'Export failed');
+      await this.throwFromResponse(response, 'Export failed');
     }
     return response.blob();
   }
@@ -230,8 +247,7 @@ class ApiClient {
       body: formData,
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -242,8 +258,7 @@ class ApiClient {
       body: formData,
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -253,8 +268,7 @@ class ApiClient {
       method: 'DELETE',
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 
@@ -282,8 +296,7 @@ class ApiClient {
   async createBrand(formData: FormData): Promise<BrandDetail> {
     const response = await this.fetchWithRefresh(`${API_BASE}/brands/`, { method: 'POST', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -291,8 +304,7 @@ class ApiClient {
   async updateBrand(id: number, formData: FormData): Promise<BrandDetail> {
     const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -300,8 +312,7 @@ class ApiClient {
   async deleteBrand(id: number): Promise<void> {
     const response = await this.fetchWithRefresh(`${API_BASE}/brands/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 
@@ -318,8 +329,7 @@ class ApiClient {
   async createCategory(formData: FormData): Promise<CreateCategoryResponse> {
     const response = await this.fetchWithRefresh(`${API_BASE}/categories`, { method: 'POST', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -327,8 +337,7 @@ class ApiClient {
   async updateCategory(id: number, formData: FormData): Promise<CategoryDetailResponse> {
     const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -336,8 +345,7 @@ class ApiClient {
   async deleteCategory(id: number): Promise<void> {
     const response = await this.fetchWithRefresh(`${API_BASE}/categories/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 
@@ -359,8 +367,7 @@ class ApiClient {
   async createBlog(formData: FormData): Promise<BlogPost> {
     const response = await this.fetchWithRefresh(`${API_BASE}/blogs/`, { method: 'POST', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -368,8 +375,7 @@ class ApiClient {
   async updateBlog(id: string, formData: FormData): Promise<BlogPost> {
     const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -377,8 +383,7 @@ class ApiClient {
   async deleteBlog(id: string): Promise<void> {
     const response = await this.fetchWithRefresh(`${API_BASE}/blogs/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 
@@ -388,8 +393,14 @@ class ApiClient {
 
   // ── Users ─────────────────────────────────────────────
 
-  async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/users');
+  async getUsers(filters: UserFilters = {}): Promise<UsersResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.role) params.append('role', filters.role);
+    if (filters.search) params.append('search', filters.search);
+    const query = params.toString();
+    return this.request<UsersResponse>(`/users${query ? `?${query}` : ''}`);
   }
 
   async getUser(id: number): Promise<User> {
@@ -491,8 +502,7 @@ class ApiClient {
   async createBanner(formData: FormData): Promise<any> {
     const response = await this.fetchWithRefresh(`${API_BASE}/banners/`, { method: 'POST', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -500,8 +510,7 @@ class ApiClient {
   async updateBanner(id: number, formData: FormData): Promise<any> {
     const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, { method: 'PUT', body: formData });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
     return response.json();
   }
@@ -509,8 +518,7 @@ class ApiClient {
   async deleteBanner(id: number): Promise<void> {
     const response = await this.fetchWithRefresh(`${API_BASE}/banners/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      await this.throwFromResponse(response, 'Request failed');
     }
   }
 

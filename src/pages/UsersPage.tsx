@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { User } from '@/types';
+import type { User, UsersStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,22 +16,45 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Loader2, Users } from 'lucide-react';
+import { Search, Loader2, Users, ShieldCheck, UserCheck, Shield, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function UsersPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const isStrictAdmin = currentUser?.role === 'admin';
 
   const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UsersStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const hasLoadedRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm, 400);
+  const [roleFilter, setRoleFilter] = useState<'' | 'customer' | 'manager' | 'admin'>('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, roleFilter, debouncedSearch]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter, debouncedSearch]);
 
   const loadUsers = async () => {
     const firstLoad = !hasLoadedRef.current;
@@ -39,30 +62,26 @@ export default function UsersPage() {
     else setIsFetching(true);
 
     try {
-      const data = await api.getUsers();
-      setUsers(data);
+      const data = await api.getUsers({
+        page,
+        limit,
+        role: roleFilter || undefined,
+        search: debouncedSearch || undefined,
+      });
+      setUsers(data.users);
+      setStats(data.stats);
+      setTotalPages(data.pages || 1);
+      setTotal(data.total || 0);
       hasLoadedRef.current = true;
     } catch (error) {
-      toast({
-        title: 'Ошибка загрузки',
-        description: 'Не удалось загрузить пользователей',
-        variant: 'destructive',
-      });
+      // Global toast already shown by api client
     } finally {
       setIsLoading(false);
       setIsFetching(false);
     }
   };
 
-  const filteredUsers = searchTerm
-    ? users.filter(
-        (u) =>
-          u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : users;
+  const filteredUsers = users;
 
   const getRoleBadge = (role: string | null) => {
     switch (role) {
@@ -84,7 +103,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Пользователи</h1>
           <p className="text-muted-foreground flex items-center gap-2">
-            Всего {users.length} пользователей
+            Всего {total} пользователей
             {isFetching && !isLoading && (
               <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
             )}
@@ -92,10 +111,67 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Stats */}
+      {stats && (
+        <div className={cn(
+          "grid gap-4",
+          isStrictAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"
+        )}>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                <Users className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Клиентов</p>
+                <p className="text-xl font-semibold">{stats.customerCount}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Подтверждённых</p>
+                <p className="text-xl font-semibold">{stats.verifiedUsers}</p>
+              </div>
+            </CardContent>
+          </Card>
+          {isStrictAdmin && (
+            <>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Менеджеров</p>
+                    <p className="text-xl font-semibold">{stats.managerCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Админов</p>
+                    <p className="text-xl font-semibold">{stats.adminCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Search */}
       <Card>
-        <CardContent className="p-4">
-          <div className="relative">
+        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Поиск по имени, email или логину..."
@@ -104,6 +180,17 @@ export default function UsersPage() {
               className="pl-9"
             />
           </div>
+          <Select value={roleFilter || 'all'} onValueChange={(v) => setRoleFilter(v === 'all' ? '' : v as any)}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Роль" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все роли</SelectItem>
+              <SelectItem value="customer">Клиенты</SelectItem>
+              <SelectItem value="manager">Менеджеры</SelectItem>
+              {isStrictAdmin && <SelectItem value="admin">Админы</SelectItem>}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -177,6 +264,35 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Страница {page} из {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || isFetching}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Назад
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || isFetching}
+            >
+              Вперёд
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
