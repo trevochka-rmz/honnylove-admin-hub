@@ -1,10 +1,29 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, FolderTree, Award, TrendingUp } from 'lucide-react';
+import { Package, FolderTree, Award, TrendingUp, Users, UserCheck, Shield, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { api } from '@/lib/api';
+import type { UsersStats } from '@/types';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const isStrictAdmin = user?.role === 'admin';
+  const [stats, setStats] = useState<UsersStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.getUsers({ page: 1, limit: 1 });
+        if (!cancelled) setStats(data.stats);
+      } catch {
+        // global toast handled in api
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const quickLinks = [
     {
@@ -41,6 +60,63 @@ export default function DashboardPage() {
           Панель управления магазином HonnyLove
         </p>
       </div>
+
+      {/* Users Stats */}
+      {stats && (
+        <div className={cn(
+          "grid gap-4",
+          isStrictAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-2"
+        )}>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                <Users className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Всего клиентов</p>
+                <p className="text-xl font-semibold">{stats.customerCount}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Подтверждённых</p>
+                <p className="text-xl font-semibold">{stats.verifiedUsers}</p>
+              </div>
+            </CardContent>
+          </Card>
+          {isStrictAdmin && (
+            <>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Менеджеров</p>
+                    <p className="text-xl font-semibold">{stats.managerCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Админов</p>
+                    <p className="text-xl font-semibold">{stats.adminCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
