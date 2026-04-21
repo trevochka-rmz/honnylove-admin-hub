@@ -72,10 +72,10 @@ export default function OrderCreatePage() {
   const loadData = async () => {
     try {
       const [usersData, productsData] = await Promise.all([
-        api.getUsers(),
+        api.getUsers({ limit: 500 }),
         api.getProducts({ limit: 500 }),
       ]);
-      setUsers(usersData);
+      setUsers(usersData.users);
       setProducts(productsData.products);
 
       // Set default address from first user if exists
