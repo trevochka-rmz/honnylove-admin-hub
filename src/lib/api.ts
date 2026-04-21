@@ -393,8 +393,14 @@ class ApiClient {
 
   // ── Users ─────────────────────────────────────────────
 
-  async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/users');
+  async getUsers(filters: UserFilters = {}): Promise<UsersResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.role) params.append('role', filters.role);
+    if (filters.search) params.append('search', filters.search);
+    const query = params.toString();
+    return this.request<UsersResponse>(`/users${query ? `?${query}` : ''}`);
   }
 
   async getUser(id: number): Promise<User> {
