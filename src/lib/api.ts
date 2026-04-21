@@ -88,6 +88,23 @@ class ApiClient {
     return response.json();
   }
 
+  /**
+   * Throw a friendly error from a non-OK Response and show a global toast.
+   */
+  private async throwFromResponse(response: Response, fallback = 'Request failed'): Promise<never> {
+    let errorMessage = fallback;
+    try {
+      const error = await response.json();
+      errorMessage = error.error || error.message || fallback;
+    } catch {
+      errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    }
+    if (response.status !== 401) {
+      toast.error(errorMessage);
+    }
+    throw new Error(errorMessage);
+  }
+
   // ── Auth ──────────────────────────────────────────────
 
   async login(email: string, password: string): Promise<{ user: User; message: string }> {
