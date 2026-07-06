@@ -311,6 +311,7 @@ export default function OrderCreatePage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="card">Карта</SelectItem>
+                  <SelectItem value="sbp">СБП</SelectItem>
                   <SelectItem value="cash">Наличные</SelectItem>
                 </SelectContent>
               </Select>

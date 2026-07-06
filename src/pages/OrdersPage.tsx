@@ -314,7 +314,13 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {order.payment_method === 'card' ? 'Карта' : 'Наличные'}
+                          {order.payment_method === 'card'
+                            ? 'Карта'
+                            : order.payment_method === 'sbp'
+                              ? 'СБП'
+                              : order.payment_method === 'cash'
+                                ? 'Наличные'
+                                : order.payment_method || '—'}
                         </Badge>
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
