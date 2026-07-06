@@ -455,6 +455,7 @@ export default function OrderEditPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="card">Карта</SelectItem>
+                  <SelectItem value="sbp">СБП</SelectItem>
                   <SelectItem value="cash">Наличные</SelectItem>
                 </SelectContent>
               </Select>
@@ -634,7 +635,7 @@ export default function OrderEditPage() {
                   >
                     {item.product_image && (
                       <img
-                        src={`${API_BASE}${item.product_image}`}
+                        src={/^https?:\/\//.test(item.product_image) ? item.product_image : `${API_BASE}${item.product_image}`}
                         alt=""
                         className="w-16 h-16 rounded object-cover"
                       />
