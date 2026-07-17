@@ -26,7 +26,7 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Главная' },
   { to: '/products', icon: Package, label: 'Товары' },
   { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
-  { to: '/pos', icon: Receipt, label: 'Касса' },
+  { to: '/pos', icon: Receipt, label: 'Продажи' },
   { to: '/users', icon: Users, label: 'Пользователи' },
   { to: '/brands', icon: Award, label: 'Бренды' },
   { to: '/categories', icon: FolderTree, label: 'Категории' },
