@@ -11,23 +11,23 @@ export default function PosPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Касса (POS)</h1>
-        <p className="text-muted-foreground">Создание чеков, просмотр заказов и статистика</p>
+        <h1 className="text-2xl font-bold text-foreground">Продажи</h1>
+        <p className="text-muted-foreground">Новая продажа, история и полный отчёт по датам</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="checkout" className="gap-2">
             <Receipt className="h-4 w-4" />
-            Новый чек
+            Новая продажа
           </TabsTrigger>
           <TabsTrigger value="orders" className="gap-2">
             <List className="h-4 w-4" />
-            Чеки
+            История продаж
           </TabsTrigger>
           <TabsTrigger value="statistics" className="gap-2">
             <BarChart3 className="h-4 w-4" />
-            Статистика
+            Отчёт
           </TabsTrigger>
         </TabsList>
 

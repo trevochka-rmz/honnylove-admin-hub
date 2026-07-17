@@ -42,6 +42,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import PosCatalog from './PosCatalog';
+import { CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { Switch } from '@/components/ui/switch';
 
 interface CartItem {
   product_id: number;
@@ -70,10 +76,14 @@ export default function PosCheckout() {
   const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [customerName, setCustomerName] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'sbp'>('cash');
+  const [customerFirstName, setCustomerFirstName] = useState('');
+  const [customerLastName, setCustomerLastName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('0');
+  const [useBackdate, setUseBackdate] = useState(false);
+  const [saleDate, setSaleDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
 
@@ -153,17 +163,25 @@ export default function PosCheckout() {
         items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
         payment_method: paymentMethod,
       };
-      if (customerName) data.customer_name = customerName;
+      if (customerFirstName) data.customer_first_name = customerFirstName;
+      if (customerLastName) data.customer_last_name = customerLastName;
       if (customerPhone) data.customer_phone = customerPhone;
       if (notes) data.notes = notes;
+      const discount = Number(discountAmount) || 0;
+      if (discount > 0) data.discount_amount = discount;
+      if (useBackdate && saleDate) {
+        data.sale_date = format(saleDate, 'yyyy-MM-dd HH:mm:ss');
+      }
 
-      const result = await api.posCheckout(data);
+      const result = await api.salesCheckout(data);
       setReceiptDialog(result.data);
       setCart([]);
-      setCustomerName('');
+      setCustomerFirstName('');
+      setCustomerLastName('');
       setCustomerPhone('');
       setNotes('');
-      toast({ title: 'Успешно', description: 'Чек создан' });
+      setDiscountAmount('0');
+      toast({ title: 'Успешно', description: 'Продажа создана' });
     } catch (error: any) {
       toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
     } finally {
@@ -338,24 +356,35 @@ export default function PosCheckout() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Способ оплаты *</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'cash' | 'card' | 'sbp')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Наличные</SelectItem>
                   <SelectItem value="card">Карта</SelectItem>
+                  <SelectItem value="sbp">СБП</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Имя клиента</Label>
-              <Input
-                placeholder="Необязательно"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>Имя клиента</Label>
+                <Input
+                  placeholder="Необязательно"
+                  value={customerFirstName}
+                  onChange={(e) => setCustomerFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Фамилия</Label>
+                <Input
+                  placeholder="Необязательно"
+                  value={customerLastName}
+                  onChange={(e) => setCustomerLastName(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -368,6 +397,16 @@ export default function PosCheckout() {
             </div>
 
             <div className="space-y-2">
+              <Label>Скидка (₽)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={discountAmount}
+                onChange={(e) => setDiscountAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Заметка</Label>
               <Textarea
                 placeholder="Необязательно"
@@ -375,6 +414,40 @@ export default function PosCheckout() {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
               />
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="cursor-pointer" htmlFor="backdate-switch">Задним числом</Label>
+                <Switch
+                  id="backdate-switch"
+                  checked={useBackdate}
+                  onCheckedChange={setUseBackdate}
+                />
+              </div>
+              {useBackdate && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !saleDate && 'text-muted-foreground')}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {saleDate ? format(saleDate, 'dd.MM.yyyy') : 'Выберите дату'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={saleDate}
+                      onSelect={setSaleDate}
+                      disabled={(d) => d > new Date()}
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -386,9 +459,17 @@ export default function PosCheckout() {
               <span className="text-muted-foreground">Товаров:</span>
               <span>{totalItems} шт.</span>
             </div>
+            {Number(discountAmount) > 0 && (
+              <div className="flex justify-between text-sm text-destructive">
+                <span>Скидка:</span>
+                <span>-{Number(discountAmount).toLocaleString('ru-RU')} ₽</span>
+              </div>
+            )}
             <div className="flex justify-between text-lg font-bold">
               <span>Итого:</span>
-              <span className="text-primary">{total.toLocaleString('ru-RU')} ₽</span>
+              <span className="text-primary">
+                {Math.max(0, total - (Number(discountAmount) || 0)).toLocaleString('ru-RU')} ₽
+              </span>
             </div>
             <Button
               className="w-full"
@@ -401,7 +482,7 @@ export default function PosCheckout() {
               ) : (
                 <CheckCircle className="mr-2 h-4 w-4" />
               )}
-              Создать чек
+              Создать продажу
             </Button>
           </CardContent>
         </Card>
@@ -413,17 +494,17 @@ export default function PosCheckout() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-primary" />
-              Чек создан
+              Продажа создана
             </DialogTitle>
             <DialogDescription>
-              Чек #{receiptDialog?.receipt_number}
+              Продажа #{receiptDialog?.receipt_number || receiptDialog?.id}
             </DialogDescription>
           </DialogHeader>
           {receiptDialog && (
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Номер:</span>
-                <span className="font-medium">{receiptDialog.receipt_number}</span>
+                <span className="font-medium">{receiptDialog.receipt_number || receiptDialog.id}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Позиций:</span>
@@ -435,7 +516,7 @@ export default function PosCheckout() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Оплата:</span>
-                <span>{receiptDialog.payment_method === 'cash' ? 'Наличные' : 'Карта'}</span>
+                <span>{paymentLabel(receiptDialog.payment_method)}</span>
               </div>
               {receiptDialog.discount > 0 && (
                 <div className="flex justify-between text-sm">
@@ -456,4 +537,11 @@ export default function PosCheckout() {
       </Dialog>
     </div>
   );
+}
+
+function paymentLabel(m: string): string {
+  if (m === 'cash') return 'Наличные';
+  if (m === 'card') return 'Карта';
+  if (m === 'sbp') return 'СБП';
+  return m;
 }

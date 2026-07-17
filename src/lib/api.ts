@@ -522,31 +522,30 @@ class ApiClient {
     }
   }
 
-  // ── POS ───────────────────────────────────────────────
+  // ── Sales ─────────────────────────────────────────────
 
-  async posPreview(productIds: number[]): Promise<any> {
-    return this.request<any>('/pos/preview', {
-      method: 'POST',
-      body: JSON.stringify({ product_ids: productIds }),
-    });
-  }
-
-  async posCheckout(data: {
-    items: { product_id: number; quantity: number }[];
-    payment_method: string;
-    customer_name?: string;
+  async salesCheckout(data: {
+    items: { product_id: number; variant_id?: number; quantity: number }[];
+    payment_method: 'cash' | 'card' | 'sbp';
+    customer_first_name?: string;
+    customer_last_name?: string;
     customer_phone?: string;
     notes?: string;
+    discount_amount?: number;
+    sale_date?: string;
   }): Promise<any> {
-    return this.request<any>('/pos/checkout', {
+    return this.request<any>('/sales/checkout', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async posGetOrders(filters: {
+  async getSales(filters: {
+    page?: number;
+    limit?: number;
     status?: string;
     payment_method?: string;
+    order_source?: 'website' | 'pos' | '';
     created_by?: number;
     date_from?: string;
     date_to?: string;
@@ -554,79 +553,78 @@ class ApiClient {
     this_week?: boolean;
     this_month?: boolean;
     search?: string;
-    is_pos_order?: boolean;
-    page?: number;
-    limit?: number;
+    sort_by?: 'date' | 'amount';
+    sort_order?: 'asc' | 'desc';
   } = {}): Promise<any> {
     const params = new URLSearchParams();
-    if (filters.status) params.append('status', filters.status);
-    if (filters.payment_method) params.append('payment_method', filters.payment_method);
-    if (filters.created_by) params.append('created_by', filters.created_by.toString());
-    if (filters.date_from) params.append('date_from', filters.date_from);
-    if (filters.date_to) params.append('date_to', filters.date_to);
-    if (filters.today_only) params.append('today_only', 'true');
-    if (filters.this_week) params.append('this_week', 'true');
-    if (filters.this_month) params.append('this_month', 'true');
-    if (filters.search) params.append('search', filters.search);
-    if (filters.is_pos_order) params.append('is_pos_order', 'true');
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.limit) params.append('limit', filters.limit.toString());
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === null || v === '' || v === false) continue;
+      params.append(k, String(v));
+    }
     const query = params.toString();
-    return this.request<any>(`/pos/orders${query ? `?${query}` : ''}`);
+    return this.request<any>(`/sales${query ? `?${query}` : ''}`);
   }
 
-  async posGetStatistics(filters: {
-    date_from?: string;
-    date_to?: string;
-    today_only?: boolean;
-    this_week?: boolean;
-    this_month?: boolean;
-    cashier_id?: number;
-    is_pos_order?: boolean;
-  } = {}): Promise<any> {
-    const params = new URLSearchParams();
-    if (filters.date_from) params.append('date_from', filters.date_from);
-    if (filters.date_to) params.append('date_to', filters.date_to);
-    if (filters.today_only) params.append('today_only', 'true');
-    if (filters.this_week) params.append('this_week', 'true');
-    if (filters.this_month) params.append('this_month', 'true');
-    if (filters.cashier_id) params.append('cashier_id', filters.cashier_id.toString());
-    if (filters.is_pos_order) params.append('is_pos_order', 'true');
-    const query = params.toString();
-    return this.request<any>(`/pos/statistics${query ? `?${query}` : ''}`);
-  }
-
-  async posToday(): Promise<any> {
-    return this.request<any>('/pos/today');
-  }
-
-  async posThisWeek(): Promise<any> {
-    return this.request<any>('/pos/this-week');
-  }
-
-  async posThisMonth(): Promise<any> {
-    return this.request<any>('/pos/this-month');
-  }
-
-  async posGetCashiers(): Promise<any> {
-    return this.request<any>('/pos/cashiers');
-  }
-
-  async posUpdateOrder(orderId: number, data: {
+  async updateSale(id: number, data: {
+    sale_date?: string;
     payment_method?: string;
-    discount_amount?: number;
-    customer_name?: string;
-    customer_phone?: string;
     notes?: string;
+    discount_amount?: number;
   }): Promise<any> {
-    return this.request<any>(`/pos/orders/${orderId}`, {
+    return this.request<any>(`/sales/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async posDeleteOrder(orderId: number): Promise<any> {
-    return this.request<any>(`/pos/orders/${orderId}`, { method: 'DELETE' });
+  async deleteSale(id: number): Promise<any> {
+    return this.request<any>(`/sales/${id}`, { method: 'DELETE' });
+  }
+
+  async getSalesReport(filters: {
+    date_from?: string;
+    date_to?: string;
+    today_only?: boolean;
+    this_week?: boolean;
+    this_month?: boolean;
+    order_source?: 'website' | 'pos' | '';
+    created_by?: number;
+  } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === null || v === '' || v === false) continue;
+      params.append(k, String(v));
+    }
+    const query = params.toString();
+    return this.request<any>(`/sales/report${query ? `?${query}` : ''}`);
+  }
+
+  async getSalesToday(): Promise<any> {
+    return this.request<any>('/sales/today');
+  }
+
+  async getSalesThisWeek(): Promise<any> {
+    return this.request<any>('/sales/this-week');
+  }
+
+  async getSalesThisMonth(): Promise<any> {
+    return this.request<any>('/sales/this-month');
+  }
+
+  async getSalesCashiers(): Promise<any> {
+    return this.request<any>('/sales/cashiers');
+  }
+
+  async getSalesCashierStats(cashierId: number, filters: { date_from?: string; date_to?: string } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    const query = params.toString();
+    return this.request<any>(`/sales/cashier/${cashierId}/stats${query ? `?${query}` : ''}`);
+  }
+
+  async getSalesCashierDetail(cashierId: number): Promise<any> {
+    return this.request<any>(`/sales/cashiers/${cashierId}`);
   }
 }
 
