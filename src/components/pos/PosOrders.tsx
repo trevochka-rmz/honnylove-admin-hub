@@ -51,6 +51,10 @@ import {
   Save,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-warning/10 text-warning',
@@ -69,6 +73,13 @@ const statusLabels: Record<string, string> = {
 const EDITABLE_STATUSES = ['pending', 'paid', 'completed'];
 const DELETABLE_STATUSES = ['pending', 'cancelled'];
 
+function paymentLabel(m: string): string {
+  if (m === 'cash') return 'Наличные';
+  if (m === 'card') return 'Карта';
+  if (m === 'sbp') return 'СБП';
+  return m;
+}
+
 export default function PosOrders() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
@@ -80,6 +91,9 @@ export default function PosOrders() {
   const [paymentFilter, setPaymentFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState('today');
   const [cashierFilter, setCashierFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('pos');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [page, setPage] = useState(1);
@@ -87,10 +101,9 @@ export default function PosOrders() {
   // Edit state
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [editForm, setEditForm] = useState({
+    sale_date: '',
     payment_method: '',
     discount_amount: '',
-    customer_name: '',
-    customer_phone: '',
     notes: '',
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -100,7 +113,7 @@ export default function PosOrders() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    api.posGetCashiers().then((res) => setCashiers(res.cashiers || [])).catch(() => {});
+    api.getSalesCashiers().then((res) => setCashiers(res.cashiers || res.data || [])).catch(() => {});
   }, []);
 
   const loadOrders = async () => {
@@ -111,12 +124,17 @@ export default function PosOrders() {
       if (statusFilter && statusFilter !== 'all') filters.status = statusFilter;
       if (paymentFilter && paymentFilter !== 'all') filters.payment_method = paymentFilter;
       if (cashierFilter && cashierFilter !== 'all') filters.created_by = Number(cashierFilter);
+      if (sourceFilter && sourceFilter !== 'all') filters.order_source = sourceFilter;
       if (periodFilter === 'today') filters.today_only = true;
       else if (periodFilter === 'week') filters.this_week = true;
       else if (periodFilter === 'month') filters.this_month = true;
+      else if (periodFilter === 'custom') {
+        if (dateFrom) filters.date_from = format(dateFrom, 'yyyy-MM-dd');
+        if (dateTo) filters.date_to = format(dateTo, 'yyyy-MM-dd');
+      }
 
-      const res = await api.posGetOrders(filters);
-      setOrders(res.orders || []);
+      const res = await api.getSales(filters);
+      setOrders(res.orders || res.data || []);
       setPagination(res.pagination || { total: 0, page: 1, totalPages: 1 });
     } catch (error: any) {
       toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
@@ -127,34 +145,18 @@ export default function PosOrders() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter]);
+  }, [debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter, sourceFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     loadOrders();
-  }, [page, debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter]);
-
-  // Parse notes to extract customer info
-  const parseNotes = (notes: string) => {
-    const result = { customer_name: '', customer_phone: '', notes: '' };
-    if (!notes) return result;
-    // Format: "[POS] | Клиент: Name | Тел: Phone | Extra notes"
-    const parts = notes.split(' | ');
-    for (const part of parts) {
-      if (part.startsWith('Клиент: ')) result.customer_name = part.replace('Клиент: ', '');
-      else if (part.startsWith('Тел: ')) result.customer_phone = part.replace('Тел: ', '');
-      else if (part !== '[POS]') result.notes = part;
-    }
-    return result;
-  };
+  }, [page, debouncedSearch, statusFilter, paymentFilter, periodFilter, cashierFilter, sourceFilter, dateFrom, dateTo]);
 
   const openEdit = (order: any) => {
-    const parsed = parseNotes(order.notes || '');
     setEditForm({
+      sale_date: order.sale_date || order.created_at || '',
       payment_method: order.payment_method || 'cash',
       discount_amount: order.discount_amount ? String(Number(order.discount_amount)) : '0',
-      customer_name: parsed.customer_name,
-      customer_phone: parsed.customer_phone,
-      notes: parsed.notes,
+      notes: order.notes || '',
     });
     setEditingOrder(order);
   };
@@ -163,14 +165,14 @@ export default function PosOrders() {
     if (!editingOrder) return;
     setIsSaving(true);
     try {
-      await api.posUpdateOrder(editingOrder.id, {
+      const payload: any = {
         payment_method: editForm.payment_method,
         discount_amount: Number(editForm.discount_amount) || 0,
-        customer_name: editForm.customer_name || undefined,
-        customer_phone: editForm.customer_phone || undefined,
         notes: editForm.notes || undefined,
-      });
-      toast({ title: 'Успешно', description: 'Чек обновлён' });
+      };
+      if (editForm.sale_date) payload.sale_date = editForm.sale_date;
+      await api.updateSale(editingOrder.id, payload);
+      toast({ title: 'Успешно', description: 'Продажа обновлена' });
       setEditingOrder(null);
       loadOrders();
     } catch (error: any) {
@@ -184,8 +186,8 @@ export default function PosOrders() {
     if (!deletingOrderId) return;
     setIsDeleting(true);
     try {
-      await api.posDeleteOrder(deletingOrderId);
-      toast({ title: 'Успешно', description: 'Чек удалён' });
+      await api.deleteSale(deletingOrderId);
+      toast({ title: 'Успешно', description: 'Продажа удалена' });
       setDeletingOrderId(null);
       setSelectedOrder(null);
       loadOrders();
@@ -220,6 +222,17 @@ export default function PosOrders() {
                 <SelectItem value="week">Эта неделя</SelectItem>
                 <SelectItem value="month">Этот месяц</SelectItem>
                 <SelectItem value="all">Все</SelectItem>
+                <SelectItem value="custom">Свой диапазон</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Источник" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все продажи</SelectItem>
+                <SelectItem value="pos">Касса</SelectItem>
+                <SelectItem value="website">Сайт</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -242,6 +255,7 @@ export default function PosOrders() {
                 <SelectItem value="all">Все способы</SelectItem>
                 <SelectItem value="cash">Наличные</SelectItem>
                 <SelectItem value="card">Карта</SelectItem>
+                <SelectItem value="sbp">СБП</SelectItem>
               </SelectContent>
             </Select>
             <Select value={cashierFilter} onValueChange={setCashierFilter}>
@@ -258,6 +272,32 @@ export default function PosOrders() {
               </SelectContent>
             </Select>
           </div>
+          {periodFilter === 'custom' && (
+            <div className="flex flex-col md:flex-row gap-3 mt-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn('justify-start text-left font-normal md:w-56', !dateFrom && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, 'dd.MM.yyyy') : 'С даты'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn('p-3 pointer-events-auto')} />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn('justify-start text-left font-normal md:w-56', !dateTo && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, 'dd.MM.yyyy') : 'По дату'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn('p-3 pointer-events-auto')} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -283,6 +323,7 @@ export default function PosOrders() {
                   <TableHead className="text-center">Позиций</TableHead>
                   <TableHead className="text-center">Кол-во</TableHead>
                   <TableHead>Оплата</TableHead>
+                  <TableHead>Источник</TableHead>
                   <TableHead>Статус</TableHead>
                   <TableHead className="text-right">Сумма</TableHead>
                 </TableRow>
@@ -296,7 +337,7 @@ export default function PosOrders() {
                   >
                     <TableCell className="font-medium">#{order.id}</TableCell>
                     <TableCell className="text-sm">
-                      {format(new Date(order.created_at), 'dd.MM.yyyy HH:mm')}
+                      {format(new Date(order.sale_date || order.created_at), 'dd.MM.yyyy HH:mm')}
                     </TableCell>
                     <TableCell className="text-sm">
                       {order.cashier_first_name || order.cashier_email}
@@ -305,7 +346,12 @@ export default function PosOrders() {
                     <TableCell className="text-center">{order.total_items_quantity}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
-                        {order.payment_method === 'cash' ? 'Наличные' : 'Карта'}
+                        {paymentLabel(order.payment_method)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {order.order_source === 'pos' ? 'Касса' : 'Сайт'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -359,7 +405,7 @@ export default function PosOrders() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Оплата:</span>
-                  <p className="font-medium">{selectedOrder.payment_method === 'cash' ? 'Наличные' : 'Карта'}</p>
+                  <p className="font-medium">{paymentLabel(selectedOrder.payment_method)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Статус:</span>
@@ -438,10 +484,18 @@ export default function PosOrders() {
       <Dialog open={!!editingOrder} onOpenChange={() => setEditingOrder(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Редактировать чек #{editingOrder?.id}</DialogTitle>
-            <DialogDescription>Измените данные чека</DialogDescription>
+            <DialogTitle>Редактировать продажу #{editingOrder?.id}</DialogTitle>
+            <DialogDescription>Измените данные продажи</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Дата продажи</Label>
+              <Input
+                type="datetime-local"
+                value={editForm.sale_date ? editForm.sale_date.slice(0, 16) : ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, sale_date: e.target.value.replace('T', ' ') + ':00' }))}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Способ оплаты</Label>
               <Select value={editForm.payment_method} onValueChange={(v) => setEditForm((f) => ({ ...f, payment_method: v }))}>
@@ -451,6 +505,7 @@ export default function PosOrders() {
                 <SelectContent>
                   <SelectItem value="cash">Наличные</SelectItem>
                   <SelectItem value="card">Карта</SelectItem>
+                  <SelectItem value="sbp">СБП</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -461,22 +516,6 @@ export default function PosOrders() {
                 min="0"
                 value={editForm.discount_amount}
                 onChange={(e) => setEditForm((f) => ({ ...f, discount_amount: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Имя клиента</Label>
-              <Input
-                value={editForm.customer_name}
-                onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))}
-                placeholder="Необязательно"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Телефон клиента</Label>
-              <Input
-                value={editForm.customer_phone}
-                onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))}
-                placeholder="Необязательно"
               />
             </div>
             <div className="space-y-2">
