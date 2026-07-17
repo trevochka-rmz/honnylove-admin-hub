@@ -356,7 +356,7 @@ export default function PosCheckout() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Способ оплаты *</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'cash' | 'card' | 'sbp')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
