@@ -629,6 +629,8 @@ export default function PosCheckout() {
   );
 }
 
+// Variant selection dialog is rendered inline; helper defined below the component would break scope.
+
 function paymentLabel(m: string): string {
   if (m === 'cash') return 'Наличные';
   if (m === 'card') return 'Карта';
