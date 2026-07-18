@@ -236,7 +236,11 @@ export default function PosCheckout() {
     setIsSubmitting(true);
     try {
       const data: any = {
-        items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+        items: cart.map((item) => ({
+          product_id: item.product_id,
+          ...(item.variant_id ? { variant_id: item.variant_id } : {}),
+          quantity: item.quantity,
+        })),
         payment_method: paymentMethod,
       };
       if (customerFirstName) data.customer_first_name = customerFirstName;
