@@ -292,7 +292,7 @@ export default function PosCheckout() {
                   <button
                     key={product.id}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b last:border-b-0"
-                    onClick={() => addToCart(product)}
+                    onClick={() => handleSelectProduct(Number(product.id))}
                   >
                     <div className="w-10 h-10 rounded bg-muted overflow-hidden flex-shrink-0">
                       {product.image ? (
@@ -358,8 +358,10 @@ export default function PosCheckout() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cart.map((item) => (
-                    <TableRow key={item.product_id}>
+                  {cart.map((item) => {
+                    const key = cartKey(item.product_id, item.variant_id);
+                    return (
+                    <TableRow key={key}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded bg-muted overflow-hidden flex-shrink-0">
@@ -371,7 +373,14 @@ export default function PosCheckout() {
                               </div>
                             )}
                           </div>
-                          <span className="text-sm font-medium truncate max-w-[200px]">{item.name}</span>
+                          <div className="min-w-0">
+                            <span className="block text-sm font-medium truncate max-w-[220px]">{item.name}</span>
+                            {item.variant_name && (
+                              <span className="block text-xs text-muted-foreground truncate max-w-[220px]">
+                                {item.variant_name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -380,7 +389,7 @@ export default function PosCheckout() {
                             variant="outline"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => updateQuantity(item.product_id, -1)}
+                            onClick={() => updateQuantity(key, -1)}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
@@ -389,7 +398,7 @@ export default function PosCheckout() {
                             variant="outline"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => updateQuantity(item.product_id, 1)}
+                            onClick={() => updateQuantity(key, 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -406,13 +415,14 @@ export default function PosCheckout() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeFromCart(item.product_id)}
+                          onClick={() => removeFromCart(key)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -420,7 +430,7 @@ export default function PosCheckout() {
         </Card>
 
         {/* Product catalog browsing */}
-        <PosCatalog onAddToCart={addToCart} />
+        <PosCatalog onAddToCart={(p) => handleSelectProduct(Number(p.id))} />
       </div>
 
       {/* Right - Payment info */}
