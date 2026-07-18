@@ -51,6 +51,9 @@ import { Switch } from '@/components/ui/switch';
 
 interface CartItem {
   product_id: number;
+  variant_id?: number;
+  variant_name?: string;
+  variant_options?: Record<string, string>;
   name: string;
   image: string;
   price: number;
@@ -67,6 +70,29 @@ interface SearchProduct {
   brand: string;
   inStockTotal: boolean;
   stockQuantityTotal: number;
+}
+
+interface PreviewVariant {
+  id: number;
+  name: string;
+  image: string;
+  price: number;
+  final_price: number;
+  discount_price: number | null;
+  options: Record<string, string>;
+  is_active: boolean;
+  available_stock: number;
+}
+
+interface PreviewProduct {
+  id: number;
+  name: string;
+  main_image_url: string;
+  final_price: string | number;
+  retail_price: string | number;
+  discount_price: string | number | null;
+  brand_name: string | null;
+  variants: PreviewVariant[];
 }
 
 export default function PosCheckout() {
@@ -86,6 +112,8 @@ export default function PosCheckout() {
   const [saleDate, setSaleDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
+  const [variantDialog, setVariantDialog] = useState<PreviewProduct | null>(null);
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false);
 
   // Search products
   useEffect(() => {
@@ -107,37 +135,85 @@ export default function PosCheckout() {
     search();
   }, [debouncedSearch]);
 
-  const addToCart = (product: SearchProduct) => {
+  const cartKey = (productId: number, variantId?: number) =>
+    `${productId}-${variantId ?? 'none'}`;
+
+  const addLine = (
+    product: PreviewProduct,
+    variant: PreviewVariant | null,
+  ) => {
+    const productId = Number(product.id);
+    const variantId = variant?.id;
+    const price = variant
+      ? Number(variant.final_price ?? variant.price)
+      : Number(product.final_price ?? product.retail_price);
+    const image = variant?.image || product.main_image_url;
+    const stock = variant ? Number(variant.available_stock) : 999;
+    const name = product.name;
     setCart((prev) => {
-      const existing = prev.find((item) => item.product_id === Number(product.id));
+      const key = cartKey(productId, variantId);
+      const existing = prev.find((it) => cartKey(it.product_id, it.variant_id) === key);
       if (existing) {
-        return prev.map((item) =>
-          item.product_id === Number(product.id)
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        return prev.map((it) =>
+          cartKey(it.product_id, it.variant_id) === key
+            ? { ...it, quantity: it.quantity + 1 }
+            : it
         );
       }
       return [
         ...prev,
         {
-          product_id: Number(product.id),
-          name: product.name,
-          image: product.image,
-          price: product.discountPrice ? Number(product.discountPrice) : Number(product.price),
+          product_id: productId,
+          variant_id: variantId,
+          variant_name: variant?.name,
+          variant_options: variant?.options,
+          name,
+          image,
+          price,
           quantity: 1,
-          available_stock: product.stockQuantityTotal ?? 999,
+          available_stock: stock,
         },
       ];
     });
-    setSearchTerm('');
-    setSearchResults([]);
   };
 
-  const updateQuantity = (productId: number, delta: number) => {
+  const handleSelectProduct = async (productId: number) => {
+    setIsLoadingVariants(true);
+    try {
+      const res = await api.salesPreview([productId]);
+      const product: PreviewProduct | undefined = res.products?.[0];
+      if (!product) {
+        toast({ title: 'Товар не найден', variant: 'destructive' });
+        return;
+      }
+      const activeVariants = (product.variants || []).filter((v) => v.is_active);
+      if (activeVariants.length > 1) {
+        setVariantDialog(product);
+      } else if (activeVariants.length === 1) {
+        addLine(product, activeVariants[0]);
+      } else {
+        addLine(product, null);
+      }
+      setSearchTerm('');
+      setSearchResults([]);
+    } catch {
+      // toast handled globally
+    } finally {
+      setIsLoadingVariants(false);
+    }
+  };
+
+  const pickVariant = (variant: PreviewVariant) => {
+    if (!variantDialog) return;
+    addLine(variantDialog, variant);
+    setVariantDialog(null);
+  };
+
+  const updateQuantity = (key: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.product_id === productId
+          cartKey(item.product_id, item.variant_id) === key
             ? { ...item, quantity: Math.max(0, item.quantity + delta) }
             : item
         )
@@ -145,8 +221,8 @@ export default function PosCheckout() {
     );
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((item) => item.product_id !== productId));
+  const removeFromCart = (key: string) => {
+    setCart((prev) => prev.filter((item) => cartKey(item.product_id, item.variant_id) !== key));
   };
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -160,7 +236,11 @@ export default function PosCheckout() {
     setIsSubmitting(true);
     try {
       const data: any = {
-        items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+        items: cart.map((item) => ({
+          product_id: item.product_id,
+          ...(item.variant_id ? { variant_id: item.variant_id } : {}),
+          quantity: item.quantity,
+        })),
         payment_method: paymentMethod,
       };
       if (customerFirstName) data.customer_first_name = customerFirstName;
@@ -216,7 +296,7 @@ export default function PosCheckout() {
                   <button
                     key={product.id}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b last:border-b-0"
-                    onClick={() => addToCart(product)}
+                    onClick={() => handleSelectProduct(Number(product.id))}
                   >
                     <div className="w-10 h-10 rounded bg-muted overflow-hidden flex-shrink-0">
                       {product.image ? (
@@ -282,8 +362,10 @@ export default function PosCheckout() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cart.map((item) => (
-                    <TableRow key={item.product_id}>
+                  {cart.map((item) => {
+                    const key = cartKey(item.product_id, item.variant_id);
+                    return (
+                    <TableRow key={key}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded bg-muted overflow-hidden flex-shrink-0">
@@ -295,7 +377,14 @@ export default function PosCheckout() {
                               </div>
                             )}
                           </div>
-                          <span className="text-sm font-medium truncate max-w-[200px]">{item.name}</span>
+                          <div className="min-w-0">
+                            <span className="block text-sm font-medium truncate max-w-[220px]">{item.name}</span>
+                            {item.variant_name && (
+                              <span className="block text-xs text-muted-foreground truncate max-w-[220px]">
+                                {item.variant_name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -304,7 +393,7 @@ export default function PosCheckout() {
                             variant="outline"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => updateQuantity(item.product_id, -1)}
+                            onClick={() => updateQuantity(key, -1)}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
@@ -313,7 +402,7 @@ export default function PosCheckout() {
                             variant="outline"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => updateQuantity(item.product_id, 1)}
+                            onClick={() => updateQuantity(key, 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -330,13 +419,14 @@ export default function PosCheckout() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeFromCart(item.product_id)}
+                          onClick={() => removeFromCart(key)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -344,7 +434,7 @@ export default function PosCheckout() {
         </Card>
 
         {/* Product catalog browsing */}
-        <PosCatalog onAddToCart={addToCart} />
+        <PosCatalog onAddToCart={(p) => handleSelectProduct(Number(p.id))} />
       </div>
 
       {/* Right - Payment info */}
@@ -488,6 +578,67 @@ export default function PosCheckout() {
         </Card>
       </div>
 
+      {/* Variant selection dialog */}
+      <Dialog open={!!variantDialog} onOpenChange={(o) => !o && setVariantDialog(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Выберите вариант</DialogTitle>
+            <DialogDescription className="line-clamp-2">
+              {variantDialog?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {variantDialog?.variants
+              ?.filter((v) => v.is_active)
+              .map((v) => {
+                const outOfStock = Number(v.available_stock) <= 0;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => pickVariant(v)}
+                    className="flex items-center gap-3 rounded-lg border p-2 text-left hover:border-primary/50 hover:bg-muted/40 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <div className="w-12 h-12 rounded bg-muted overflow-hidden flex-shrink-0">
+                      {v.image ? (
+                        <img src={v.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{v.name}</p>
+                      {v.options && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.entries(v.options)
+                            .filter(([k]) => k !== 'Код')
+                            .map(([k, val]) => (
+                              <Badge key={k} variant="outline" className="text-[10px] font-normal">
+                                {k}: {val}
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm font-semibold text-primary">
+                          {Number(v.final_price ?? v.price).toLocaleString('ru-RU')} ₽
+                        </span>
+                        <Badge variant={outOfStock ? 'secondary' : 'outline'} className="text-[10px]">
+                          {outOfStock ? 'Нет в наличии' : `В наличии: ${v.available_stock}`}
+                        </Badge>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVariantDialog(null)}>Отмена</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Receipt dialog */}
       <Dialog open={!!receiptDialog} onOpenChange={() => setReceiptDialog(null)}>
         <DialogContent className="max-w-md">
@@ -538,6 +689,8 @@ export default function PosCheckout() {
     </div>
   );
 }
+
+// Variant selection dialog is rendered inline; helper defined below the component would break scope.
 
 function paymentLabel(m: string): string {
   if (m === 'cash') return 'Наличные';

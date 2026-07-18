@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -62,7 +62,8 @@ const App = () => (
               <Route path="blogs/:id" element={<BlogEditPage />} />
               <Route path="banners" element={<BannersPage />} />
               <Route path="banners/:id" element={<BannerEditPage />} />
-              <Route path="pos" element={<PosPage />} />
+              <Route path="sales" element={<PosPage />} />
+              <Route path="pos" element={<Navigate to="/sales" replace />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

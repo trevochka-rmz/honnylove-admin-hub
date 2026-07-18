@@ -107,10 +107,10 @@ class ApiClient {
 
   // ── Auth ──────────────────────────────────────────────
 
-  async login(email: string, password: string): Promise<{ user: User; message: string }> {
+  async login(email: string, password: string, rememberMe = false): Promise<{ user: User; message: string }> {
     return this.request<{ user: User; message: string }>(
       '/auth/admin/login',
-      { method: 'POST', body: JSON.stringify({ email, password }) },
+      { method: 'POST', body: JSON.stringify({ email, password, rememberMe }) },
       false
     );
   }
@@ -523,6 +523,20 @@ class ApiClient {
   }
 
   // ── Sales ─────────────────────────────────────────────
+
+  async salesPreview(product_ids: number[]): Promise<any> {
+    return this.request<any>('/sales/preview', {
+      method: 'POST',
+      body: JSON.stringify({ product_ids }),
+    });
+  }
+
+  async salesPreviewItems(items: { product_id: number; variant_id?: number; quantity: number }[]): Promise<any> {
+    return this.request<any>('/sales/preview', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
+  }
 
   async salesCheckout(data: {
     items: { product_id: number; variant_id?: number; quantity: number }[];

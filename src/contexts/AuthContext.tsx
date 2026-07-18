@@ -7,7 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await api.login(email, password);
+  const login = async (email: string, password: string, rememberMe = false) => {
+    const response = await api.login(email, password, rememberMe);
     // Cookies set by server automatically. Just store user in state.
     setUser(response.user);
   };
