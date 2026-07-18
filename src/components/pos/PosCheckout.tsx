@@ -112,6 +112,8 @@ export default function PosCheckout() {
   const [saleDate, setSaleDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
+  const [variantDialog, setVariantDialog] = useState<PreviewProduct | null>(null);
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false);
 
   // Search products
   useEffect(() => {
@@ -133,30 +135,78 @@ export default function PosCheckout() {
     search();
   }, [debouncedSearch]);
 
-  const addToCart = (product: SearchProduct) => {
+  const cartKey = (productId: number, variantId?: number) =>
+    `${productId}-${variantId ?? 'none'}`;
+
+  const addLine = (
+    product: PreviewProduct,
+    variant: PreviewVariant | null,
+  ) => {
+    const productId = Number(product.id);
+    const variantId = variant?.id;
+    const price = variant
+      ? Number(variant.final_price ?? variant.price)
+      : Number(product.final_price ?? product.retail_price);
+    const image = variant?.image || product.main_image_url;
+    const stock = variant ? Number(variant.available_stock) : 999;
+    const name = product.name;
     setCart((prev) => {
-      const existing = prev.find((item) => item.product_id === Number(product.id));
+      const key = cartKey(productId, variantId);
+      const existing = prev.find((it) => cartKey(it.product_id, it.variant_id) === key);
       if (existing) {
-        return prev.map((item) =>
-          item.product_id === Number(product.id)
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        return prev.map((it) =>
+          cartKey(it.product_id, it.variant_id) === key
+            ? { ...it, quantity: it.quantity + 1 }
+            : it
         );
       }
       return [
         ...prev,
         {
-          product_id: Number(product.id),
-          name: product.name,
-          image: product.image,
-          price: product.discountPrice ? Number(product.discountPrice) : Number(product.price),
+          product_id: productId,
+          variant_id: variantId,
+          variant_name: variant?.name,
+          variant_options: variant?.options,
+          name,
+          image,
+          price,
           quantity: 1,
-          available_stock: product.stockQuantityTotal ?? 999,
+          available_stock: stock,
         },
       ];
     });
-    setSearchTerm('');
-    setSearchResults([]);
+  };
+
+  const handleSelectProduct = async (productId: number) => {
+    setIsLoadingVariants(true);
+    try {
+      const res = await api.salesPreview([productId]);
+      const product: PreviewProduct | undefined = res.products?.[0];
+      if (!product) {
+        toast({ title: 'Товар не найден', variant: 'destructive' });
+        return;
+      }
+      const activeVariants = (product.variants || []).filter((v) => v.is_active);
+      if (activeVariants.length > 1) {
+        setVariantDialog(product);
+      } else if (activeVariants.length === 1) {
+        addLine(product, activeVariants[0]);
+      } else {
+        addLine(product, null);
+      }
+      setSearchTerm('');
+      setSearchResults([]);
+    } catch {
+      // toast handled globally
+    } finally {
+      setIsLoadingVariants(false);
+    }
+  };
+
+  const pickVariant = (variant: PreviewVariant) => {
+    if (!variantDialog) return;
+    addLine(variantDialog, variant);
+    setVariantDialog(null);
   };
 
   const updateQuantity = (productId: number, delta: number) => {
