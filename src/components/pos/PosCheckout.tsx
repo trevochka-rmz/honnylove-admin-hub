@@ -51,6 +51,9 @@ import { Switch } from '@/components/ui/switch';
 
 interface CartItem {
   product_id: number;
+  variant_id?: number;
+  variant_name?: string;
+  variant_options?: Record<string, string>;
   name: string;
   image: string;
   price: number;
@@ -67,6 +70,29 @@ interface SearchProduct {
   brand: string;
   inStockTotal: boolean;
   stockQuantityTotal: number;
+}
+
+interface PreviewVariant {
+  id: number;
+  name: string;
+  image: string;
+  price: number;
+  final_price: number;
+  discount_price: number | null;
+  options: Record<string, string>;
+  is_active: boolean;
+  available_stock: number;
+}
+
+interface PreviewProduct {
+  id: number;
+  name: string;
+  main_image_url: string;
+  final_price: string | number;
+  retail_price: string | number;
+  discount_price: string | number | null;
+  brand_name: string | null;
+  variants: PreviewVariant[];
 }
 
 export default function PosCheckout() {
