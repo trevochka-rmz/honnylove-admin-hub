@@ -524,6 +524,20 @@ class ApiClient {
 
   // ── Sales ─────────────────────────────────────────────
 
+  async salesPreview(product_ids: number[]): Promise<any> {
+    return this.request<any>('/sales/preview', {
+      method: 'POST',
+      body: JSON.stringify({ product_ids }),
+    });
+  }
+
+  async salesPreviewItems(items: { product_id: number; variant_id?: number; quantity: number }[]): Promise<any> {
+    return this.request<any>('/sales/preview', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
+  }
+
   async salesCheckout(data: {
     items: { product_id: number; variant_id?: number; quantity: number }[];
     payment_method: 'cash' | 'card' | 'sbp';
