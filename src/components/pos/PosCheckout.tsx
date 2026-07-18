@@ -209,11 +209,11 @@ export default function PosCheckout() {
     setVariantDialog(null);
   };
 
-  const updateQuantity = (productId: number, delta: number) => {
+  const updateQuantity = (key: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.product_id === productId
+          cartKey(item.product_id, item.variant_id) === key
             ? { ...item, quantity: Math.max(0, item.quantity + delta) }
             : item
         )
@@ -221,8 +221,8 @@ export default function PosCheckout() {
     );
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((item) => item.product_id !== productId));
+  const removeFromCart = (key: string) => {
+    setCart((prev) => prev.filter((item) => cartKey(item.product_id, item.variant_id) !== key));
   };
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
