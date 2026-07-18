@@ -578,6 +578,67 @@ export default function PosCheckout() {
         </Card>
       </div>
 
+      {/* Variant selection dialog */}
+      <Dialog open={!!variantDialog} onOpenChange={(o) => !o && setVariantDialog(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Выберите вариант</DialogTitle>
+            <DialogDescription className="line-clamp-2">
+              {variantDialog?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {variantDialog?.variants
+              ?.filter((v) => v.is_active)
+              .map((v) => {
+                const outOfStock = Number(v.available_stock) <= 0;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => pickVariant(v)}
+                    className="flex items-center gap-3 rounded-lg border p-2 text-left hover:border-primary/50 hover:bg-muted/40 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <div className="w-12 h-12 rounded bg-muted overflow-hidden flex-shrink-0">
+                      {v.image ? (
+                        <img src={v.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{v.name}</p>
+                      {v.options && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.entries(v.options)
+                            .filter(([k]) => k !== 'Код')
+                            .map(([k, val]) => (
+                              <Badge key={k} variant="outline" className="text-[10px] font-normal">
+                                {k}: {val}
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm font-semibold text-primary">
+                          {Number(v.final_price ?? v.price).toLocaleString('ru-RU')} ₽
+                        </span>
+                        <Badge variant={outOfStock ? 'secondary' : 'outline'} className="text-[10px]">
+                          {outOfStock ? 'Нет в наличии' : `В наличии: ${v.available_stock}`}
+                        </Badge>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVariantDialog(null)}>Отмена</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Receipt dialog */}
       <Dialog open={!!receiptDialog} onOpenChange={() => setReceiptDialog(null)}>
         <DialogContent className="max-w-md">
