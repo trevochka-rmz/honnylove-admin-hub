@@ -62,7 +62,8 @@ const App = () => (
               <Route path="blogs/:id" element={<BlogEditPage />} />
               <Route path="banners" element={<BannersPage />} />
               <Route path="banners/:id" element={<BannerEditPage />} />
-              <Route path="pos" element={<PosPage />} />
+              <Route path="sales" element={<PosPage />} />
+              <Route path="pos" element={<Navigate to="/sales" replace />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
