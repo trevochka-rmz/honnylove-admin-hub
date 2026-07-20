@@ -524,6 +524,24 @@ export default function PosOrders() {
                 onChange={(e) => setEditForm((f) => ({ ...f, discount_amount: e.target.value }))}
               />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>Имя клиента</Label>
+                <Input
+                  value={editForm.customer_first_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer_first_name: e.target.value }))}
+                  placeholder="Необязательно"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Телефон</Label>
+                <Input
+                  value={editForm.customer_phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))}
+                  placeholder="+7..."
+                />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label>Заметки</Label>
               <Textarea
