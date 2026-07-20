@@ -454,6 +454,24 @@ export default function PosCheckout() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label>Кассир / Менеджер</Label>
+              <Select value={managerId || 'me'} onValueChange={(v) => setManagerId(v === 'me' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Текущий пользователь" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">Я (текущий пользователь)</SelectItem>
+                  {cashiers.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.first_name ? `${c.first_name} ${c.last_name || ''}`.trim() : c.email}
+                      {c.role === 'manager' ? ' · менеджер' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Способ оплаты *</Label>
               <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'cash' | 'card' | 'sbp')}>
                 <SelectTrigger>
