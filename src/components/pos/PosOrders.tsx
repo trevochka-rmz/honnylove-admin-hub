@@ -91,7 +91,7 @@ export default function PosOrders() {
   const [paymentFilter, setPaymentFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState('today');
   const [cashierFilter, setCashierFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('pos');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [cashiers, setCashiers] = useState<any[]>([]);
@@ -136,7 +136,7 @@ export default function PosOrders() {
       }
 
       const res = await api.getSales(filters);
-      setOrders(res.orders || res.data || []);
+      setOrders(res.sales || res.orders || res.data || []);
       setPagination(res.pagination || { total: 0, page: 1, totalPages: 1 });
     } catch (error: any) {
       toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
@@ -346,7 +346,7 @@ export default function PosOrders() {
                       {format(new Date(order.sale_date || order.created_at), 'dd.MM.yyyy HH:mm')}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {order.cashier_first_name || order.cashier_email}
+                      {order.staff_first_name || order.cashier_first_name || order.staff_email || order.cashier_email || '—'}
                     </TableCell>
                     <TableCell className="text-center">{order.items_count}</TableCell>
                     <TableCell className="text-center">{order.total_items_quantity}</TableCell>
@@ -407,7 +407,7 @@ export default function PosOrders() {
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Кассир:</span>
-                  <p className="font-medium">{selectedOrder.cashier_first_name || selectedOrder.cashier_email}</p>
+                  <p className="font-medium">{selectedOrder.staff_first_name || selectedOrder.cashier_first_name || selectedOrder.staff_email || selectedOrder.cashier_email || '—'}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Оплата:</span>
