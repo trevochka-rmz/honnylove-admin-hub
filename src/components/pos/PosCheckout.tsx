@@ -103,6 +103,8 @@ export default function PosCheckout() {
   const [isSearching, setIsSearching] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'sbp'>('cash');
+  const [managerId, setManagerId] = useState<string>('');
+  const [cashiers, setCashiers] = useState<any[]>([]);
   const [customerFirstName, setCustomerFirstName] = useState('');
   const [customerLastName, setCustomerLastName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -114,6 +116,12 @@ export default function PosCheckout() {
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
   const [variantDialog, setVariantDialog] = useState<PreviewProduct | null>(null);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
+
+  useEffect(() => {
+    api.getSalesCashiers()
+      .then((res) => setCashiers(res.cashiers || res.data || []))
+      .catch(() => {});
+  }, []);
 
   // Search products
   useEffect(() => {
@@ -243,6 +251,7 @@ export default function PosCheckout() {
         })),
         payment_method: paymentMethod,
       };
+      if (managerId) data.manager_id = Number(managerId);
       if (customerFirstName) data.customer_first_name = customerFirstName;
       if (customerLastName) data.customer_last_name = customerLastName;
       if (customerPhone) data.customer_phone = customerPhone;
