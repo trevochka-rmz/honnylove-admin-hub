@@ -541,6 +541,7 @@ class ApiClient {
   async salesCheckout(data: {
     items: { product_id: number; variant_id?: number; quantity: number }[];
     payment_method: 'cash' | 'card' | 'sbp';
+    manager_id?: number;
     customer_first_name?: string;
     customer_last_name?: string;
     customer_phone?: string;
@@ -584,6 +585,8 @@ class ApiClient {
     payment_method?: string;
     notes?: string;
     discount_amount?: number;
+    customer_first_name?: string;
+    customer_phone?: string;
   }): Promise<any> {
     return this.request<any>(`/sales/${id}`, {
       method: 'PUT',
