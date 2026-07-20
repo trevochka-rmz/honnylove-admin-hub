@@ -103,6 +103,8 @@ export default function PosCheckout() {
   const [isSearching, setIsSearching] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'sbp'>('cash');
+  const [managerId, setManagerId] = useState<string>('');
+  const [cashiers, setCashiers] = useState<any[]>([]);
   const [customerFirstName, setCustomerFirstName] = useState('');
   const [customerLastName, setCustomerLastName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -114,6 +116,12 @@ export default function PosCheckout() {
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
   const [variantDialog, setVariantDialog] = useState<PreviewProduct | null>(null);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
+
+  useEffect(() => {
+    api.getSalesCashiers()
+      .then((res) => setCashiers(res.cashiers || res.data || []))
+      .catch(() => {});
+  }, []);
 
   // Search products
   useEffect(() => {
@@ -243,6 +251,7 @@ export default function PosCheckout() {
         })),
         payment_method: paymentMethod,
       };
+      if (managerId) data.manager_id = Number(managerId);
       if (customerFirstName) data.customer_first_name = customerFirstName;
       if (customerLastName) data.customer_last_name = customerLastName;
       if (customerPhone) data.customer_phone = customerPhone;
@@ -444,6 +453,24 @@ export default function PosCheckout() {
             <CardTitle className="text-lg">Оплата</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Кассир / Менеджер</Label>
+              <Select value={managerId || 'me'} onValueChange={(v) => setManagerId(v === 'me' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Текущий пользователь" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">Я (текущий пользователь)</SelectItem>
+                  {cashiers.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.first_name ? `${c.first_name} ${c.last_name || ''}`.trim() : c.email}
+                      {c.role === 'manager' ? ' · менеджер' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label>Способ оплаты *</Label>
               <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'cash' | 'card' | 'sbp')}>

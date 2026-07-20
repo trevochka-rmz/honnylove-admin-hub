@@ -105,6 +105,8 @@ export default function PosOrders() {
     payment_method: '',
     discount_amount: '',
     notes: '',
+    customer_first_name: '',
+    customer_phone: '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -157,6 +159,8 @@ export default function PosOrders() {
       payment_method: order.payment_method || 'cash',
       discount_amount: order.discount_amount ? String(Number(order.discount_amount)) : '0',
       notes: order.notes || '',
+      customer_first_name: order.customer_first_name || '',
+      customer_phone: order.customer_phone || '',
     });
     setEditingOrder(order);
   };
@@ -169,6 +173,8 @@ export default function PosOrders() {
         payment_method: editForm.payment_method,
         discount_amount: Number(editForm.discount_amount) || 0,
         notes: editForm.notes || undefined,
+        customer_first_name: editForm.customer_first_name || undefined,
+        customer_phone: editForm.customer_phone || undefined,
       };
       if (editForm.sale_date) payload.sale_date = editForm.sale_date;
       await api.updateSale(editingOrder.id, payload);
@@ -517,6 +523,24 @@ export default function PosOrders() {
                 value={editForm.discount_amount}
                 onChange={(e) => setEditForm((f) => ({ ...f, discount_amount: e.target.value }))}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>Имя клиента</Label>
+                <Input
+                  value={editForm.customer_first_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer_first_name: e.target.value }))}
+                  placeholder="Необязательно"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Телефон</Label>
+                <Input
+                  value={editForm.customer_phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))}
+                  placeholder="+7..."
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Заметки</Label>
