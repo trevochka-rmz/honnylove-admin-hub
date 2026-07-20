@@ -89,7 +89,7 @@ export default function PosOrders() {
   const debouncedSearch = useDebouncedValue(search, 400);
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
-  const [periodFilter, setPeriodFilter] = useState('today');
+  const [periodFilter, setPeriodFilter] = useState('all');
   const [cashierFilter, setCashierFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
@@ -325,7 +325,7 @@ export default function PosOrders() {
                 <TableRow className="bg-muted/50">
                   <TableHead>ID</TableHead>
                   <TableHead>Дата</TableHead>
-                  <TableHead>Кассир</TableHead>
+                  <TableHead>Покупатель / Кассир</TableHead>
                   <TableHead className="text-center">Позиций</TableHead>
                   <TableHead className="text-center">Кол-во</TableHead>
                   <TableHead>Оплата</TableHead>
